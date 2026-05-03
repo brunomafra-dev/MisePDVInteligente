@@ -769,9 +769,9 @@ function MetricCard({
           <span
             className={cn(
               "flex size-10 items-center justify-center rounded-md border",
-              tone === "success" && "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
-              tone === "warning" && "border-amber-500/20 bg-amber-500/10 text-amber-300",
-              tone === "danger" && "border-red-500/20 bg-red-500/10 text-red-300",
+              tone === "success" && "border-emerald-600/20 bg-emerald-500/10 text-emerald-700",
+              tone === "warning" && "border-amber-600/25 bg-amber-500/15 text-amber-800",
+              tone === "danger" && "border-red-600/20 bg-red-500/10 text-red-700",
               tone === "neutral" && "border-border bg-muted text-muted-foreground",
             )}
           >
@@ -1929,7 +1929,7 @@ function IntegrationCard({
         <div className="space-y-2">
           {lines.map((line) => (
             <div key={line} className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CheckCircle2 className="size-4 text-emerald-300" />
+              <CheckCircle2 className="size-4 text-emerald-700" />
               <span>{line}</span>
             </div>
           ))}

@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 :root {
-  --background: oklch(0.13 0.018 240);
-  --foreground: oklch(0.96 0.01 230);
-  --card: oklch(0.17 0.02 240);
-  --card-foreground: oklch(0.96 0.01 230);
-  --sidebar: oklch(0.115 0.018 240);
-  --muted: oklch(0.22 0.02 240);
-  --muted-foreground: oklch(0.72 0.02 235);
-  --primary: oklch(0.72 0.16 150);
-  --primary-foreground: oklch(0.09 0.015 150);
-  --secondary: oklch(0.24 0.035 215);
-  --secondary-foreground: oklch(0.94 0.02 215);
-  --accent: oklch(0.25 0.045 205);
-  --accent-foreground: oklch(0.96 0.01 230);
-  --destructive: oklch(0.58 0.18 25);
-  --destructive-foreground: oklch(0.98 0.01 25);
-  --border: oklch(0.28 0.025 235);
-  --ring: oklch(0.72 0.16 150);
+  --background: oklch(0.974 0.007 228);
+  --foreground: oklch(0.21 0.026 242);
+  --card: oklch(0.998 0.002 228);
+  --card-foreground: oklch(0.21 0.026 242);
+  --sidebar: oklch(0.962 0.018 160);
+  --muted: oklch(0.936 0.009 230);
+  --muted-foreground: oklch(0.47 0.023 238);
+  --primary: oklch(0.42 0.112 158);
+  --primary-foreground: oklch(0.99 0.004 150);
+  --secondary: oklch(0.88 0.079 78);
+  --secondary-foreground: oklch(0.28 0.049 72);
+  --accent: oklch(0.93 0.048 34);
+  --accent-foreground: oklch(0.34 0.065 32);
+  --destructive: oklch(0.56 0.18 25);
+  --destructive-foreground: oklch(0.99 0.004 25);
+  --border: oklch(0.86 0.012 226);
+  --ring: oklch(0.5 0.118 158);
   --radius: 0.5rem;
 }
 
@@ -50,6 +50,11 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+::selection {
+  background: color-mix(in oklch, var(--primary) 20%, white);
+  color: var(--foreground);
 }
 
 button {
