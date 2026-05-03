@@ -38,11 +38,13 @@ async function verifyMobile(browser) {
   page.on("pageerror", (error) => errors.push(error.message));
 
   await page.goto(baseUrl, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: /Mesa/ }).click();
-  await page.getByRole("button", { name: /^PDV$/ }).click();
+  await page.getByRole("button", { name: /^Mesas$/ }).first().click();
+  await page.getByRole("button", { name: /^Abrir mesa$/ }).first().click();
+  await page.getByRole("button", { name: /^Cozinha$/ }).click();
   await page.waitForTimeout(300);
 
-  const textLength = (await page.locator("body").innerText()).trim().length;
+  const bodyText = (await page.locator("body").innerText()).trim();
+  const textLength = bodyText.length;
   const overlay = await page
     .locator("[data-nextjs-dialog], .vite-error-overlay, #webpack-dev-server-client-overlay")
     .count();
@@ -53,7 +55,13 @@ async function verifyMobile(browser) {
   await page.screenshot({ path: ".next/sabore-mobile.png", fullPage: true });
   await page.close();
 
-  return { textLength, overlay, horizontalOverflow, errors };
+  return {
+    textLength,
+    overlay,
+    horizontalOverflow,
+    composerClearedOnNavigation: !bodyText.includes("Novo pedido Mesa"),
+    errors,
+  };
 }
 
 const browser = await chromium.launch({ headless: true });
@@ -68,7 +76,8 @@ if (
   mobile.overlay > 0 ||
   desktop.errors.length > 0 ||
   mobile.errors.length > 0 ||
-  mobile.horizontalOverflow
+  mobile.horizontalOverflow ||
+  !mobile.composerClearedOnNavigation
 ) {
   console.error(JSON.stringify({ desktop, mobile }, null, 2));
   process.exit(1);

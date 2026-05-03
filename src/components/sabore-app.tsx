@@ -61,7 +61,9 @@ import type {
 
 type View =
   | "overview"
-  | "pos"
+  | "service"
+  | "tables"
+  | "delivery"
   | "kitchen"
   | "stock"
   | "reports"
@@ -69,6 +71,7 @@ type View =
 
 type ComposerState = {
   channel: SalesChannel;
+  existingOrderId?: string;
   tableId: string;
   customerId: string;
   items: Record<string, number>;
@@ -110,7 +113,9 @@ const navItems: Array<{
   icon: LucideIcon;
 }> = [
   { id: "overview", label: "Painel", icon: Store },
-  { id: "pos", label: "PDV", icon: ShoppingCart },
+  { id: "service", label: "Atendimento", icon: ShoppingCart },
+  { id: "tables", label: "Mesas", icon: Table2 },
+  { id: "delivery", label: "Delivery", icon: Truck },
   { id: "kitchen", label: "Cozinha", icon: ChefHat },
   { id: "stock", label: "Estoque", icon: PackageCheck },
   { id: "reports", label: "Relatorios", icon: BarChart3 },
@@ -131,13 +136,6 @@ function orderStatusVariant(status: OrderStatus) {
   if (status === "cancelled") return "danger";
 
   return "neutral";
-}
-
-function channelIcon(channel: SalesChannel) {
-  if (channel === "table") return Table2;
-  if (channel === "delivery") return Truck;
-
-  return Store;
 }
 
 function kitchenActionLabel(status: OrderStatus) {
@@ -192,35 +190,6 @@ function deductLotsByMovements(
   }
 
   return nextLots;
-}
-
-function buildFiscalPayload(order: Order, data: SaboreData) {
-  const totals = calculateOrderTotals(order, data.products);
-
-  return {
-    unitId: order.unitId,
-    orderId: order.id,
-    reference: `sabore-${order.code}`,
-    customer: order.customerId
-      ? data.customers.find((customer) => customer.id === order.customerId)
-      : undefined,
-    items: order.items.map((item) => {
-      const product = data.products.find((candidate) => candidate.id === item.productId);
-
-      return {
-        sku: product?.id ?? item.productId,
-        name: product?.name ?? "Produto",
-        quantity: item.quantity,
-        unitPrice: product?.price ?? 0,
-      };
-    }),
-    payments: order.payments.map((payment) => ({
-      method: payment.method,
-      amount: payment.amount,
-    })),
-    delivery: order.channel === "delivery",
-    total: totals.total,
-  };
 }
 
 export function SaboreApp({
@@ -285,17 +254,39 @@ export function SaboreApp({
     setActivity((current) => [message, ...current].slice(0, 6));
   }
 
-  function openComposer(channel: SalesChannel) {
-    setActiveView("pos");
+  function changeView(view: View) {
+    setComposer(null);
+    setActiveView(view);
+  }
+
+  function openComposer(
+    channel: SalesChannel,
+    options: {
+      tableId?: string;
+      customerId?: string;
+      existingOrderId?: string;
+    } = {},
+  ) {
+    setActiveView(
+      channel === "delivery"
+        ? "delivery"
+        : options.existingOrderId
+          ? "service"
+          : "tables",
+    );
     setComposer({
       channel,
+      existingOrderId: options.existingOrderId,
       tableId:
-        channel === "table"
-          ? data.tables.find((table) => table.status !== "closing")?.id ?? ""
-          : "",
-      customerId: channel === "delivery" ? data.customers[0]?.id ?? "" : "",
-      items: emptyComposerItems,
-      notes: emptyComposerNotes,
+        options.tableId ??
+        (channel === "table"
+          ? data.tables.find((table) => table.status === "free")?.id ?? ""
+          : ""),
+      customerId:
+        options.customerId ??
+        (channel === "delivery" ? data.customers[0]?.id ?? "" : ""),
+      items: { ...emptyComposerItems },
+      notes: { ...emptyComposerNotes },
       deliveryFee: channel === "delivery" ? "8" : "0",
       discount: "0",
     });
@@ -356,6 +347,47 @@ export function SaboreApp({
 
     if (composer.channel === "delivery" && !composer.customerId) {
       log("Selecione um cliente para abrir o delivery");
+      return;
+    }
+
+    if (composer.existingOrderId) {
+      const existingOrder = orders.find(
+        (order) => order.id === composer.existingOrderId,
+      );
+
+      if (!existingOrder) {
+        log("Pedido em atendimento nao encontrado");
+        return;
+      }
+
+      const stockMovements = reserveStockForOrder(
+        {
+          ...existingOrder,
+          id: `${existingOrder.id}-${Date.now()}`,
+          items: selectedItems,
+        },
+        data.recipe,
+        data.ingredients,
+        now,
+      ).map((movement) => ({
+        ...movement,
+        id: `${movement.id}-${Date.now()}`,
+        orderId: existingOrder.id,
+      }));
+
+      setOrders((current) =>
+        current.map((order) =>
+          order.id === existingOrder.id
+            ? { ...order, items: [...order.items, ...selectedItems] }
+            : order,
+        ),
+      );
+      setMovements((current) => [...stockMovements, ...current]);
+      setLots((current) => deductLotsByMovements(current, stockMovements));
+      setComposer(null);
+      log(
+        `${selectedItems.length} item(ns) lancados na ${data.tables.find((table) => table.id === existingOrder.tableId)?.label ?? `mesa do pedido ${existingOrder.code}`}`,
+      );
       return;
     }
 
@@ -436,29 +468,42 @@ export function SaboreApp({
     if (order) log(`Pagamento ${paymentLabel[method]} registrado no pedido ${order.code}`);
   }
 
-  async function issueFiscal(orderId: string) {
+  function generateBill(orderId: string) {
     const order = orders.find((candidate) => candidate.id === orderId);
-    if (!order) return;
 
-    const response = await fetch("/api/fiscal/nfce", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildFiscalPayload(order, data)),
-    });
-    const result = (await response.json()) as { status?: string; provider?: string };
+    if (order) {
+      log(`Conta do pedido ${order.code} gerada para conferencia`);
+    }
+  }
 
+  function finalizeOrder(orderId: string) {
     setOrders((current) =>
-      current.map((candidate) =>
-        candidate.id === orderId
-          ? {
-              ...candidate,
-              fiscalStatus:
-                result.status === "authorized" ? "authorized" : "rejected",
-            }
-          : candidate,
-      ),
+      current.map((order) => {
+        if (order.id !== orderId) return order;
+
+        const totals = calculateOrderTotals(order, data.products);
+
+        return {
+          ...order,
+          status: "paid",
+          payments:
+            totals.remaining > 0
+              ? [
+                  ...order.payments,
+                  {
+                    id: `pay-${order.code}-final`,
+                    method: "cash",
+                    amount: totals.remaining,
+                    receivedAt: now,
+                  },
+                ]
+              : order.payments,
+        };
+      }),
     );
-    log(`NFC-e ${result.status ?? "processada"} via ${result.provider ?? "mock"}`);
+    const order = orders.find((candidate) => candidate.id === orderId);
+
+    if (order) log(`Mesa/pedido ${order.code} finalizado no caixa`);
   }
 
   async function sendWhatsApp(orderId: string) {
@@ -548,7 +593,7 @@ export function SaboreApp({
                   key={item.id}
                   variant={activeView === item.id ? "secondary" : "ghost"}
                   className="justify-start"
-                  onClick={() => setActiveView(item.id)}
+                  onClick={() => changeView(item.id)}
                 >
                   <Icon />
                   <span>{item.label}</span>
@@ -592,15 +637,15 @@ export function SaboreApp({
               )}
             </div>
             <div className="grid grid-cols-3 gap-2 sm:flex">
-              <Button onClick={() => openComposer("counter")}>
-                <Plus />
-                Balcao
+              <Button onClick={() => changeView("service")}>
+                <ShoppingCart />
+                Atendimento
               </Button>
-              <Button variant="secondary" onClick={() => openComposer("table")}>
+              <Button variant="secondary" onClick={() => changeView("tables")}>
                 <Table2 />
-                Mesa
+                Mesas
               </Button>
-              <Button variant="outline" onClick={() => openComposer("delivery")}>
+              <Button variant="outline" onClick={() => changeView("delivery")}>
                 <Truck />
                 Delivery
               </Button>
@@ -633,13 +678,41 @@ export function SaboreApp({
               onCloseCash={closeCash}
             />
           )}
-          {activeView === "pos" && (
-            <PosView
+          {activeView === "service" && (
+            <ServiceView
               orders={orders}
               data={data}
+              onAddItems={(order) =>
+                openComposer("table", {
+                  existingOrderId: order.id,
+                  tableId: order.tableId,
+                })
+              }
+              onGenerateBill={generateBill}
+              onFinalize={finalizeOrder}
+            />
+          )}
+          {activeView === "tables" && (
+            <TablesView
+              orders={orders}
+              data={data}
+              onOpenTable={(tableId) => openComposer("table", { tableId })}
+              onAddItems={(order) =>
+                openComposer("table", {
+                  existingOrderId: order.id,
+                  tableId: order.tableId,
+                })
+              }
+              onFinalize={finalizeOrder}
+            />
+          )}
+          {activeView === "delivery" && (
+            <DeliveryView
+              orders={orders}
+              data={data}
+              onNewDelivery={() => openComposer("delivery")}
               onAdvance={advanceOrder}
               onPay={payOrder}
-              onIssueFiscal={issueFiscal}
               onSendWhatsApp={sendWhatsApp}
             />
           )}
@@ -899,12 +972,22 @@ function OrderComposer({
   const deliveryFee = Math.max(0, Number(composer.deliveryFee) || 0);
   const discount = Math.max(0, Number(composer.discount) || 0);
   const total = Math.max(0, subtotal + deliveryFee - discount);
+  const selectedTable = composer.tableId
+    ? data.tables.find((table) => table.id === composer.tableId)
+    : undefined;
+  const existingOrder = composer.existingOrderId
+    ? data.orders.find((order) => order.id === composer.existingOrderId)
+    : undefined;
 
   return (
     <Card className="mt-5">
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div>
-          <CardTitle>Novo pedido {channelLabel[composer.channel]}</CardTitle>
+          <CardTitle>
+            {composer.existingOrderId
+              ? `Adicionar itens ${selectedTable?.label ?? `pedido #${existingOrder?.code}`}`
+              : `Novo pedido ${channelLabel[composer.channel]}`}
+          </CardTitle>
           <CardDescription>
             Lance itens, quantidades e destino antes de enviar para a cozinha.
           </CardDescription>
@@ -923,18 +1006,35 @@ function OrderComposer({
           {composer.channel === "table" && (
             <div>
               <p className="mb-2 text-sm font-medium">Mesa</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {data.tables.map((table) => (
-                  <Button
-                    key={table.id}
-                    variant={composer.tableId === table.id ? "secondary" : "outline"}
-                    onClick={() => onPatch({ tableId: table.id })}
-                  >
-                    <Table2 />
-                    {table.label}
-                  </Button>
-                ))}
-              </div>
+              {selectedTable ? (
+                <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 p-4">
+                  <div>
+                    <p className="font-medium">{selectedTable.label}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedTable.seats} lugares
+                      {existingOrder ? ` · pedido #${existingOrder.code}` : ""}
+                    </p>
+                  </div>
+                  <Badge variant={existingOrder ? "warning" : "success"}>
+                    {existingOrder ? "Em consumo" : "Selecionada"}
+                  </Badge>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {data.tables.map((table) => (
+                    <Button
+                      key={table.id}
+                      variant={
+                        composer.tableId === table.id ? "secondary" : "outline"
+                      }
+                      onClick={() => onPatch({ tableId: table.id })}
+                    >
+                      <Table2 />
+                      {table.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -1056,20 +1156,26 @@ function OrderComposer({
                   </p>
                 )}
               </div>
-              <MoneyField
-                label="Desconto"
-                value={composer.discount}
-                onChange={(discountValue) => onPatch({ discount: discountValue })}
-              />
+              {!composer.existingOrderId && (
+                <MoneyField
+                  label="Desconto"
+                  value={composer.discount}
+                  onChange={(discountValue) => onPatch({ discount: discountValue })}
+                />
+              )}
               <div className="space-y-2 border-t border-border pt-3 text-sm">
                 <Row label="Subtotal" value={formatCurrency(subtotal)} />
-                <Row label="Entrega" value={formatCurrency(deliveryFee)} />
-                <Row label="Desconto" value={formatCurrency(discount)} />
+                {composer.channel === "delivery" && (
+                  <Row label="Entrega" value={formatCurrency(deliveryFee)} />
+                )}
+                {!composer.existingOrderId && (
+                  <Row label="Desconto" value={formatCurrency(discount)} />
+                )}
                 <Row label="Total" value={formatCurrency(total)} strong />
               </div>
               <Button className="w-full" onClick={onSubmit}>
                 <Send />
-                Abrir pedido
+                {composer.existingOrderId ? "Lancar itens" : "Abrir pedido"}
               </Button>
             </div>
           </div>
@@ -1101,111 +1207,344 @@ function MoneyField({
   );
 }
 
-function PosView({
+function ServiceView({
   orders,
   data,
+  onAddItems,
+  onGenerateBill,
+  onFinalize,
+}: {
+  orders: Order[];
+  data: SaboreData;
+  onAddItems: (order: Order) => void;
+  onGenerateBill: (orderId: string) => void;
+  onFinalize: (orderId: string) => void;
+}) {
+  const tableOrders = orders.filter(
+    (order) =>
+      order.channel === "table" &&
+      !["paid", "cancelled"].includes(order.status),
+  );
+
+  return (
+    <div className="space-y-5 pt-5">
+      <div className="grid gap-4 md:grid-cols-3">
+        <MetricCard
+          label="Mesas em consumo"
+          value={String(tableOrders.length)}
+          helper="Mesas abertas aguardando itens, preparo ou fechamento."
+          icon={Table2}
+        />
+        <MetricCard
+          label="Ticket em atendimento"
+          value={formatCurrency(
+            tableOrders.reduce(
+              (sum, order) =>
+                sum + calculateOrderTotals(order, data.products).total,
+              0,
+            ),
+          )}
+          helper="Total ainda aberto nas mesas."
+          icon={CircleDollarSign}
+          tone="success"
+        />
+        <MetricCard
+          label="Tempo medio"
+          value={formatDuration(
+            tableOrders.length
+              ? Math.round(
+                  tableOrders.reduce(
+                    (sum, order) => sum + minutesSince(order.openedAt),
+                    0,
+                  ) / tableOrders.length,
+                )
+              : 0,
+          )}
+          helper="Tempo medio das mesas abertas."
+          icon={Timer}
+          tone="warning"
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        {tableOrders.map((order) => {
+          const table = data.tables.find((candidate) => candidate.id === order.tableId);
+          const totals = calculateOrderTotals(order, data.products);
+
+          return (
+            <Card key={order.id}>
+              <CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_240px]">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="warning">{table?.label ?? "Mesa"}</Badge>
+                    <Badge variant="info">#{order.code}</Badge>
+                    <Badge variant={orderStatusVariant(order.status)}>
+                      {statusLabel[order.status]}
+                    </Badge>
+                    <Badge variant="neutral">
+                      <Clock3 className="mr-1 size-3" />
+                      {formatDuration(minutesSince(order.openedAt))}
+                    </Badge>
+                  </div>
+                  <div className="mt-4 grid gap-2">
+                    {order.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between rounded-md border border-border bg-muted/20 px-3 py-2 text-sm"
+                      >
+                        <span>{getItemLabel(item, data.products)}</span>
+                        <span className="text-muted-foreground">{item.notes}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <Row label="Total" value={formatCurrency(totals.total)} strong />
+                  <Row label="Falta" value={formatCurrency(totals.remaining)} />
+                  <Button className="w-full" size="sm" onClick={() => onAddItems(order)}>
+                    <Plus />
+                    Lancar itens
+                  </Button>
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onGenerateBill(order.id)}
+                  >
+                    <ReceiptText />
+                    Gerar conta
+                  </Button>
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onFinalize(order.id)}
+                  >
+                    <WalletCards />
+                    Finalizar mesa
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+      {tableOrders.length === 0 && (
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            Nenhuma mesa em atendimento. Abra uma mesa na tela Mesas.
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function TablesView({
+  orders,
+  data,
+  onOpenTable,
+  onAddItems,
+  onFinalize,
+}: {
+  orders: Order[];
+  data: SaboreData;
+  onOpenTable: (tableId: string) => void;
+  onAddItems: (order: Order) => void;
+  onFinalize: (orderId: string) => void;
+}) {
+  const activeTableOrders = orders.filter(
+    (order) =>
+      order.channel === "table" &&
+      !["paid", "cancelled"].includes(order.status),
+  );
+
+  return (
+    <div className="space-y-5 pt-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {data.tables.map((table) => {
+          const activeOrder = activeTableOrders.find(
+            (order) => order.tableId === table.id,
+          );
+          const totals = activeOrder
+            ? calculateOrderTotals(activeOrder, data.products)
+            : null;
+          const isAvailable = !activeOrder && table.status === "free";
+
+          return (
+            <Card key={table.id}>
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-semibold">{table.label}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {table.seats} lugares
+                    </p>
+                  </div>
+                  <Badge
+                    variant={
+                      activeOrder ? "warning" : isAvailable ? "success" : "neutral"
+                    }
+                  >
+                    {activeOrder
+                      ? "Em consumo"
+                      : isAvailable
+                        ? "Disponivel"
+                        : "Fechando"}
+                  </Badge>
+                </div>
+
+                {activeOrder && totals ? (
+                  <div className="mt-5 space-y-3">
+                    <Row label={`Pedido #${activeOrder.code}`} value={formatDuration(minutesSince(activeOrder.openedAt))} />
+                    <Row label="Total" value={formatCurrency(totals.total)} strong />
+                    <Button className="w-full" size="sm" onClick={() => onAddItems(activeOrder)}>
+                      <Plus />
+                      Atender mesa
+                    </Button>
+                    <Button
+                      className="w-full"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => onFinalize(activeOrder.id)}
+                    >
+                      <WalletCards />
+                      Finalizar
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    className="mt-5 w-full"
+                    size="sm"
+                    variant={isAvailable ? "default" : "outline"}
+                    disabled={!isAvailable}
+                    onClick={() => onOpenTable(table.id)}
+                  >
+                    <Table2 />
+                    Abrir mesa
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DeliveryView({
+  orders,
+  data,
+  onNewDelivery,
   onAdvance,
   onPay,
-  onIssueFiscal,
   onSendWhatsApp,
 }: {
   orders: Order[];
   data: SaboreData;
+  onNewDelivery: () => void;
   onAdvance: (orderId: string) => void;
   onPay: (orderId: string, method: PaymentMethod) => void;
-  onIssueFiscal: (orderId: string) => void;
   onSendWhatsApp: (orderId: string) => void;
 }) {
-  return (
-    <div className="space-y-4 pt-5">
-      {orders.map((order) => {
-        const totals = calculateOrderTotals(order, data.products);
-        const ChannelIcon = channelIcon(order.channel);
-        const canPay = totals.remaining > 0 && order.status !== "cancelled";
-        const elapsedMinutes = minutesSince(order.openedAt);
+  const deliveryOrders = orders.filter(
+    (order) => order.channel === "delivery" && order.status !== "cancelled",
+  );
 
-        return (
-          <Card key={order.id}>
-            <CardContent className="grid gap-5 p-5 xl:grid-cols-[1fr_280px]">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="info">#{order.code}</Badge>
-                  <Badge variant="neutral">
-                    <ChannelIcon className="mr-1 size-3" />
-                    {channelLabel[order.channel]}
-                  </Badge>
-                  <Badge variant={orderStatusVariant(order.status)}>
-                    {statusLabel[order.status]}
-                  </Badge>
-                  <Badge variant={elapsedMinutes > 30 ? "warning" : "neutral"}>
-                    <Clock3 className="mr-1 size-3" />
-                    {formatDuration(elapsedMinutes)}
-                  </Badge>
-                  <Badge variant={order.fiscalStatus === "authorized" ? "success" : "neutral"}>
-                    NFC-e {order.fiscalStatus}
-                  </Badge>
+  return (
+    <div className="space-y-5 pt-5">
+      <div className="flex justify-end">
+        <Button onClick={onNewDelivery}>
+          <Plus />
+          Novo delivery
+        </Button>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {deliveryOrders.map((order) => {
+          const totals = calculateOrderTotals(order, data.products);
+          const customer = data.customers.find(
+            (candidate) => candidate.id === order.customerId,
+          );
+
+          return (
+            <Card key={order.id}>
+              <CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_240px]">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="info">#{order.code}</Badge>
+                    <Badge variant={orderStatusVariant(order.status)}>
+                      {statusLabel[order.status]}
+                    </Badge>
+                    <Badge variant="neutral">
+                      <Truck className="mr-1 size-3" />
+                      {customer?.neighborhood ?? "Entrega"}
+                    </Badge>
+                    <Badge variant="neutral">
+                      <Clock3 className="mr-1 size-3" />
+                      {formatDuration(minutesSince(order.openedAt))}
+                    </Badge>
+                  </div>
+                  <p className="mt-4 text-sm font-medium">
+                    {customer?.name ?? "Cliente delivery"}
+                  </p>
+                  <div className="mt-3 grid gap-2">
+                    {order.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between rounded-md border border-border bg-muted/20 px-3 py-2 text-sm"
+                      >
+                        <span>{getItemLabel(item, data.products)}</span>
+                        <span className="text-muted-foreground">{item.notes}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="mt-4 grid gap-2">
-                  {order.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between rounded-md border border-border bg-muted/20 px-3 py-2 text-sm"
-                    >
-                      <span>{getItemLabel(item, data.products)}</span>
-                      <span className="text-muted-foreground">{item.notes}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-3">
-                <Row label="Subtotal" value={formatCurrency(totals.subtotal)} />
-                <Row label="Entrega" value={formatCurrency(totals.deliveryFee)} />
-                <Row label="Desconto" value={formatCurrency(totals.discount)} />
-                <Row label="Total" value={formatCurrency(totals.total)} strong />
-                <Row label="Falta" value={formatCurrency(totals.remaining)} />
-                <div className="grid grid-cols-2 gap-2 pt-2">
+                <div className="space-y-3">
+                  <Row label="Total" value={formatCurrency(totals.total)} strong />
+                  <Row label="Falta" value={formatCurrency(totals.remaining)} />
                   <Button
-                    variant="secondary"
+                    className="w-full"
                     size="sm"
-                    disabled={order.status === "paid" || order.status === "cancelled"}
+                    variant="secondary"
+                    disabled={order.status === "paid"}
                     onClick={() => onAdvance(order.id)}
                   >
                     <RefreshCw />
                     Avancar
                   </Button>
                   <Button
-                    variant="outline"
+                    className="w-full"
                     size="sm"
-                    disabled={!canPay}
-                    onClick={() => onPay(order.id, order.channel === "delivery" ? "pix" : "cash")}
+                    variant="outline"
+                    disabled={totals.remaining <= 0}
+                    onClick={() => onPay(order.id, "pix")}
                   >
                     <CreditCard />
-                    Pagar
+                    Pagar Pix
                   </Button>
                   <Button
-                    variant="outline"
+                    className="w-full"
                     size="sm"
-                    disabled={order.payments.length === 0}
-                    onClick={() => onIssueFiscal(order.id)}
-                  >
-                    <ReceiptText />
-                    NFC-e
-                  </Button>
-                  <Button
                     variant="ghost"
-                    size="sm"
-                    disabled={order.channel !== "delivery"}
                     onClick={() => onSendWhatsApp(order.id)}
                   >
                     <Send />
                     WhatsApp
                   </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+      {deliveryOrders.length === 0 && (
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            Nenhum delivery aberto.
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
