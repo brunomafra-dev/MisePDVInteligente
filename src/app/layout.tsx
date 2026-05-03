@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   title: "Sabore | PDV inteligente para restaurantes",
   description:
     "Sistema SaaS para PDV, cozinha, estoque, CMV, delivery proprio, NFC-e e WhatsApp guiado.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

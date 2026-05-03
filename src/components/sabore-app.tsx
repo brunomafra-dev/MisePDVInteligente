@@ -22,10 +22,10 @@ import {
   Table2,
   Timer,
   Truck,
-  Utensils,
   WalletCards,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { BrandMark } from "@/components/brand-mark";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -426,9 +426,7 @@ export function SaboreApp({
           <div className="flex items-center justify-between gap-3 lg:block">
             <div>
               <div className="flex items-center gap-2">
-                <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                  <Utensils className="size-5" />
-                </span>
+                <BrandMark />
                 <div>
                   <p className="text-sm font-semibold">Sabore</p>
                   <p className="text-xs text-muted-foreground">PDV inteligente</p>
