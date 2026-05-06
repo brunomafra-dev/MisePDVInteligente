@@ -4,6 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 
 const baseUrl = process.env.SABORE_BASE_URL ?? "http://localhost:3000";
 const smokeStartedAt = new Date(Date.now() - 5000).toISOString();
+const smokeEmail = `sabore-smoke-${Date.now()}@example.com`;
+const smokePassword = `Sabore-${Date.now()}!`;
+let smokeUserId = null;
 
 function readEnvFile() {
   if (!fs.existsSync(".env.local")) return {};
@@ -89,6 +92,69 @@ async function cleanupSmokeData() {
   await supabase.from("dining_tables").update({ status: "free" }).neq("status", "free");
 }
 
+async function setupSmokeUser() {
+  const env = { ...readEnvFile(), ...process.env };
+  const rawUrl = env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!rawUrl || !serviceKey) return;
+
+  const supabase = createClient(rawUrl.replace(/\/rest\/v1\/?$/, ""), serviceKey, {
+    auth: { persistSession: false },
+  });
+  const { data: unitResult, error: unitError } = await supabase
+    .from("restaurant_units")
+    .select("id")
+    .limit(1)
+    .maybeSingle();
+
+  if (unitError || !unitResult) {
+    throw new Error(unitError?.message ?? "Unidade demo nao encontrada");
+  }
+
+  const { data: userResult, error: userError } =
+    await supabase.auth.admin.createUser({
+      email: smokeEmail,
+      password: smokePassword,
+      email_confirm: true,
+    });
+
+  if (userError || !userResult.user) {
+    throw new Error(userError?.message ?? "Nao foi possivel criar usuario smoke");
+  }
+
+  smokeUserId = userResult.user.id;
+
+  const { error: profileError } = await supabase.from("user_profiles").insert({
+    auth_user_id: smokeUserId,
+    unit_id: unitResult.id,
+    name: "Smoke Test",
+    role: "owner",
+  });
+
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+}
+
+async function cleanupSmokeUser() {
+  if (!smokeUserId) return;
+
+  const env = { ...readEnvFile(), ...process.env };
+  const rawUrl = env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!rawUrl || !serviceKey) return;
+
+  const supabase = createClient(rawUrl.replace(/\/rest\/v1\/?$/, ""), serviceKey, {
+    auth: { persistSession: false },
+  });
+
+  await supabase.from("user_profiles").delete().eq("auth_user_id", smokeUserId);
+  await supabase.auth.admin.deleteUser(smokeUserId);
+  smokeUserId = null;
+}
+
 async function verifyDesktop(browser) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   const errors = [];
@@ -126,6 +192,10 @@ async function verifyMobile(browser) {
   page.on("pageerror", (error) => errors.push(error.message));
 
   await page.goto(`${baseUrl}/app`, { waitUntil: "networkidle" });
+  await page.getByLabel(/^Email$/).fill(smokeEmail);
+  await page.getByLabel(/^Senha$/).fill(smokePassword);
+  await page.getByRole("button", { name: /^Entrar$/ }).click();
+  await page.getByRole("button", { name: /^Delivery$/ }).first().waitFor();
 
   await page.getByRole("button", { name: /^Delivery$/ }).first().click();
   await page.waitForTimeout(200);
@@ -246,6 +316,8 @@ async function verifyMobile(browser) {
   };
 }
 
+await setupSmokeUser();
+
 const browser = await chromium.launch({ headless: true });
 let desktop;
 let mobile;
@@ -256,6 +328,7 @@ try {
 } finally {
   await browser.close();
   await cleanupSmokeData();
+  await cleanupSmokeUser();
 }
 
 if (

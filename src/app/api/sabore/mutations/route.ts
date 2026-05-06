@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { saboreMutationSchema, type SaboreMutation } from "@/lib/sabore-mutations";
+import {
+  AccessError,
+  canPerform,
+  getAuthenticatedProfile,
+  type AuthenticatedProfile,
+} from "@/lib/supabase/access";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -90,6 +96,192 @@ async function must<T>(label: string, query: PromiseLike<{ data: T; error: unkno
   }
 
   return data;
+}
+
+function ensureUnit(unitId: string, profile: AuthenticatedProfile) {
+  if (unitId !== profile.unitId) {
+    throw new AccessError("Operacao fora da unidade do usuario", 403);
+  }
+}
+
+async function assertRows(
+  client: SupabaseClient,
+  label: string,
+  table: string,
+  column: string,
+  ids: string[],
+  profile: AuthenticatedProfile,
+) {
+  const uniqueIds = [...new Set(ids)];
+
+  if (uniqueIds.length === 0) return;
+
+  const rows = (await must(
+    label,
+    client.from(table).select("id").in(column, uniqueIds).eq("unit_id", profile.unitId),
+  )) as Array<{ id: string }>;
+
+  if (rows.length !== uniqueIds.length) {
+    throw new AccessError("Registro nao pertence a unidade do usuario", 403);
+  }
+}
+
+async function assertOrderAccess(
+  client: SupabaseClient,
+  orderId: string,
+  profile: AuthenticatedProfile,
+) {
+  const rows = (await must(
+    "orders access",
+    client.from("orders").select("id").eq("id", orderId).eq("unit_id", profile.unitId),
+  )) as Array<{ id: string }>;
+
+  if (rows.length !== 1) {
+    throw new AccessError("Pedido nao pertence a unidade do usuario", 403);
+  }
+}
+
+async function assertRecipeAccess(
+  client: SupabaseClient,
+  mutation: Extract<SaboreMutation, { type: "create_recipe_item" }>,
+  profile: AuthenticatedProfile,
+) {
+  await assertRows(
+    client,
+    "recipe product access",
+    "products",
+    "id",
+    [mutation.recipeItem.productId],
+    profile,
+  );
+  await assertRows(
+    client,
+    "recipe ingredient access",
+    "ingredients",
+    "id",
+    [mutation.recipeItem.ingredientId],
+    profile,
+  );
+}
+
+async function authorizeMutation(
+  client: SupabaseClient,
+  mutation: SaboreMutation,
+  profile: AuthenticatedProfile,
+) {
+  if (!canPerform(profile.role, mutation.type)) {
+    throw new AccessError("Perfil sem permissao para esta operacao", 403);
+  }
+
+  switch (mutation.type) {
+    case "create_order": {
+      ensureUnit(mutation.order.unitId, profile);
+      mutation.movements.forEach((movement) => ensureUnit(movement.unitId, profile));
+      await assertRows(
+        client,
+        "order product access",
+        "products",
+        "id",
+        mutation.order.items.map((item) => item.productId),
+        profile,
+      );
+      if (mutation.order.tableId) {
+        await assertRows(
+          client,
+          "order table access",
+          "dining_tables",
+          "id",
+          [mutation.order.tableId],
+          profile,
+        );
+      }
+      break;
+    }
+    case "append_order_items": {
+      await assertOrderAccess(client, mutation.orderId, profile);
+      mutation.movements.forEach((movement) => ensureUnit(movement.unitId, profile));
+      await assertRows(
+        client,
+        "append product access",
+        "products",
+        "id",
+        mutation.items.map((item) => item.productId),
+        profile,
+      );
+      break;
+    }
+    case "update_order_status":
+    case "update_whatsapp_status": {
+      await assertOrderAccess(client, mutation.orderId, profile);
+      break;
+    }
+    case "pay_order": {
+      await assertOrderAccess(client, mutation.orderId, profile);
+      if (mutation.tableId) {
+        await assertRows(
+          client,
+          "payment table access",
+          "dining_tables",
+          "id",
+          [mutation.tableId],
+          profile,
+        );
+      }
+      break;
+    }
+    case "close_cash": {
+      const rows = (await must(
+        "cash session access",
+        client
+          .from("cash_sessions")
+          .select("id")
+          .eq("id", mutation.cashSessionId)
+          .eq("unit_id", profile.unitId),
+      )) as Array<{ id: string }>;
+
+      if (rows.length !== 1) {
+        throw new AccessError("Caixa nao pertence a unidade do usuario", 403);
+      }
+      break;
+    }
+    case "create_product": {
+      ensureUnit(mutation.product.unitId, profile);
+      break;
+    }
+    case "create_recipe_item": {
+      await assertRecipeAccess(client, mutation, profile);
+      break;
+    }
+    case "create_table": {
+      ensureUnit(mutation.table.unitId, profile);
+      break;
+    }
+    case "stock_adjustment": {
+      ensureUnit(mutation.movement.unitId, profile);
+      await assertRows(
+        client,
+        "stock ingredient access",
+        "ingredients",
+        "id",
+        [mutation.movement.ingredientId],
+        profile,
+      );
+      if (mutation.lot) {
+        if (mutation.lot.ingredientId !== mutation.movement.ingredientId) {
+          throw new AccessError("Lote e movimento precisam usar o mesmo insumo", 400);
+        }
+        await assertRows(
+          client,
+          "stock lot ingredient access",
+          "ingredients",
+          "id",
+          [mutation.lot.ingredientId],
+          profile,
+        );
+      }
+      break;
+    }
+  }
 }
 
 async function insertMovements(
@@ -283,11 +475,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    await handleMutation(getSupabaseAdmin(), parsed.data);
+    const client = getSupabaseAdmin();
+    const profile = await getAuthenticatedProfile(request, client);
+
+    await authorizeMutation(client, parsed.data, profile);
+    await handleMutation(client, parsed.data);
 
     return Response.json({ ok: true });
   } catch (error) {
     console.error("Sabore mutation failed", error);
+    const status = error instanceof AccessError ? error.status : 500;
 
     return Response.json(
       {
@@ -296,7 +493,7 @@ export async function POST(request: Request) {
             ? error.message
             : "Nao foi possivel persistir a operacao",
       },
-      { status: 500 },
+      { status },
     );
   }
 }

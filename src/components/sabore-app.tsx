@@ -71,6 +71,7 @@ import type {
   PaymentMethod,
   Product,
   RecipeItem,
+  Role,
   SaboreData,
   SalesChannel,
 } from "@/lib/types";
@@ -282,10 +283,16 @@ function deductLotsByMovements(
 
 export function SaboreApp({
   initialData,
+  accessToken,
+  currentUser,
   dataSource,
+  onLogout,
 }: {
   initialData: SaboreData;
+  accessToken?: string;
+  currentUser?: { name: string; role: Role };
   dataSource?: { source: "supabase" | "demo"; message: string };
+  onLogout?: () => void;
 }) {
   const [activeView, setActiveView] = useState<View>("overview");
   const [stockDialog, setStockDialog] = useState<StockDialog>(null);
@@ -366,11 +373,19 @@ export function SaboreApp({
   async function persistMutation(mutation: SaboreMutation) {
     if (dataSource?.source !== "supabase") return;
 
+    if (!accessToken) {
+      log("Login obrigatorio para salvar no Supabase");
+      return;
+    }
+
     try {
       const response = await fetch("/api/sabore/mutations", {
         method: "POST",
         keepalive: true,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(mutation),
       });
 
@@ -1062,19 +1077,32 @@ export function SaboreApp({
                 </p>
               )}
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:flex">
-              <Button onClick={() => changeView("service")}>
-                <ShoppingCart />
-                Atendimento
-              </Button>
-              <Button variant="secondary" onClick={() => changeView("tables")}>
-                <SmallTableIcon />
-                Mesas
-              </Button>
-              <Button variant="outline" onClick={() => changeView("delivery")}>
-                <Truck />
-                Delivery
-              </Button>
+            <div className="space-y-3 xl:text-right">
+              {currentUser && (
+                <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                  <Badge variant="neutral">{currentUser.name}</Badge>
+                  <Badge variant="info">{currentUser.role}</Badge>
+                  {onLogout && (
+                    <Button size="sm" variant="ghost" onClick={onLogout}>
+                      Sair
+                    </Button>
+                  )}
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-2 sm:flex">
+                <Button onClick={() => changeView("service")}>
+                  <ShoppingCart />
+                  Atendimento
+                </Button>
+                <Button variant="secondary" onClick={() => changeView("tables")}>
+                  <SmallTableIcon />
+                  Mesas
+                </Button>
+                <Button variant="outline" onClick={() => changeView("delivery")}>
+                  <Truck />
+                  Delivery
+                </Button>
+              </div>
             </div>
           </header>
 
