@@ -283,6 +283,15 @@ async function verifyMobile(browser) {
     .getByText(/Controle FEFO/i)
     .first()
     .isVisible();
+  await page.getByRole("button", { name: /^Fechar$/ }).click();
+
+  await page.getByRole("button", { name: /^Admin$/ }).click();
+  await page.waitForTimeout(300);
+  const adminText = await page.locator("body").innerText();
+  const adminVisible =
+    adminText.includes("Configuracao da unidade") &&
+    adminText.includes("Usuarios e acessos") &&
+    adminText.includes("Pacotes e modulos");
 
   const bodyText = (await page.locator("body").innerText()).trim();
   const textLength = bodyText.length;
@@ -312,6 +321,7 @@ async function verifyMobile(browser) {
     stockIsFocused,
     movementPopupVisible,
     lotsPopupVisible,
+    adminVisible,
     errors,
   };
 }
@@ -351,6 +361,7 @@ if (
   !mobile.stockIsFocused ||
   !mobile.movementPopupVisible ||
   !mobile.lotsPopupVisible ||
+  !mobile.adminVisible ||
   !mobile.composerClearedOnNavigation
 ) {
   console.error(JSON.stringify({ desktop, mobile }, null, 2));

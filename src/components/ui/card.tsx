@@ -8,7 +8,7 @@ export function Card({
   return (
     <section
       className={cn(
-        "rounded-lg border border-border bg-card text-card-foreground shadow-[0_14px_35px_-28px_rgba(15,23,42,0.55)]",
+        "min-w-0 rounded-lg border border-border bg-card text-card-foreground shadow-[0_14px_35px_-28px_rgba(15,23,42,0.55)]",
         className,
       )}
       {...props}

@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 const uuidSchema = z.string().uuid();
+const roleSchema = z.enum(["owner", "manager", "cashier", "kitchen", "stock"]);
+const unitMeasureSchema = z.enum(["g", "kg", "ml", "l", "un"]);
 const paymentMethodSchema = z.enum([
   "cash",
   "pix",
@@ -107,6 +109,37 @@ const tableSchema = z.object({
   status: z.enum(["free", "open", "closing"]),
 });
 
+const organizationSettingsSchema = z.object({
+  id: uuidSchema,
+  name: z.string().min(1),
+  planPrice: z.number().nonnegative(),
+});
+
+const unitSettingsSchema = z.object({
+  id: uuidSchema,
+  organizationId: uuidSchema,
+  name: z.string().min(1),
+  city: z.string().min(1),
+  neighborhood: z.string().min(1),
+  fiscalEnabled: z.boolean(),
+});
+
+const ingredientSchema = z.object({
+  id: uuidSchema,
+  unitId: uuidSchema,
+  name: z.string().min(1),
+  measure: unitMeasureSchema,
+  averageCost: z.number().nonnegative(),
+  minimumStock: z.number().nonnegative(),
+});
+
+const userProfileSchema = z.object({
+  id: uuidSchema,
+  unitId: uuidSchema,
+  name: z.string().min(1),
+  role: roleSchema,
+});
+
 export const saboreMutationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("create_order"),
@@ -156,6 +189,21 @@ export const saboreMutationSchema = z.discriminatedUnion("type", [
     type: z.literal("stock_adjustment"),
     movement: movementSchema,
     lot: lotSchema.optional(),
+  }),
+  z.object({
+    type: z.literal("update_unit_settings"),
+    organization: organizationSettingsSchema,
+    unit: unitSettingsSchema,
+  }),
+  z.object({
+    type: z.literal("create_ingredient"),
+    ingredient: ingredientSchema,
+  }),
+  z.object({
+    type: z.literal("create_user_profile"),
+    email: z.string().email(),
+    password: z.string().min(6),
+    profile: userProfileSchema,
   }),
 ]);
 

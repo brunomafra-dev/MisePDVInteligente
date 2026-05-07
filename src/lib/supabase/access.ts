@@ -87,7 +87,7 @@ export function canPerform(role: Role, mutationType: string) {
       "close_cash",
     ],
     kitchen: ["update_order_status"],
-    stock: ["stock_adjustment", "create_recipe_item"],
+    stock: ["stock_adjustment", "create_recipe_item", "create_ingredient"],
   };
 
   return permissions[role]?.includes(mutationType) ?? false;

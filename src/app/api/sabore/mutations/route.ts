@@ -81,6 +81,48 @@ function lotRow(lot: NonNullable<Extract<SaboreMutation, { type: "stock_adjustme
   };
 }
 
+function organizationSettingsRow(
+  organization: Extract<SaboreMutation, { type: "update_unit_settings" }>["organization"],
+) {
+  return {
+    name: organization.name,
+    plan_price: organization.planPrice,
+  };
+}
+
+function unitSettingsRow(unit: Extract<SaboreMutation, { type: "update_unit_settings" }>["unit"]) {
+  return {
+    name: unit.name,
+    city: unit.city,
+    neighborhood: unit.neighborhood,
+    fiscal_enabled: unit.fiscalEnabled,
+  };
+}
+
+function ingredientRow(ingredient: Extract<SaboreMutation, { type: "create_ingredient" }>["ingredient"]) {
+  return {
+    id: ingredient.id,
+    unit_id: ingredient.unitId,
+    name: ingredient.name,
+    measure: ingredient.measure,
+    average_cost: ingredient.averageCost,
+    minimum_stock: ingredient.minimumStock,
+  };
+}
+
+function userProfileRow(
+  profile: Extract<SaboreMutation, { type: "create_user_profile" }>["profile"],
+  authUserId: string,
+) {
+  return {
+    id: profile.id,
+    auth_user_id: authUserId,
+    unit_id: profile.unitId,
+    name: profile.name,
+    role: profile.role,
+  };
+}
+
 async function must<T>(label: string, query: PromiseLike<{ data: T; error: unknown }>) {
   const { data, error } = await query;
 
@@ -281,6 +323,30 @@ async function authorizeMutation(
       }
       break;
     }
+    case "update_unit_settings": {
+      ensureUnit(mutation.unit.id, profile);
+      const rows = (await must(
+        "unit settings access",
+        client
+          .from("restaurant_units")
+          .select("id, organization_id")
+          .eq("id", profile.unitId)
+          .eq("organization_id", mutation.organization.id),
+      )) as Array<{ id: string; organization_id: string }>;
+
+      if (rows.length !== 1 || mutation.unit.organizationId !== mutation.organization.id) {
+        throw new AccessError("Configuracao nao pertence a unidade do usuario", 403);
+      }
+      break;
+    }
+    case "create_ingredient": {
+      ensureUnit(mutation.ingredient.unitId, profile);
+      break;
+    }
+    case "create_user_profile": {
+      ensureUnit(mutation.profile.unitId, profile);
+      break;
+    }
   }
 }
 
@@ -458,6 +524,62 @@ async function handleMutation(client: SupabaseClient, mutation: SaboreMutation) 
       }
 
       await insertMovements(client, [mutation.movement]);
+      break;
+    }
+    case "update_unit_settings": {
+      await must(
+        "organizations",
+        client
+          .from("organizations")
+          .update(organizationSettingsRow(mutation.organization))
+          .eq("id", mutation.organization.id),
+      );
+      await must(
+        "restaurant_units",
+        client
+          .from("restaurant_units")
+          .update(unitSettingsRow(mutation.unit))
+          .eq("id", mutation.unit.id),
+      );
+      break;
+    }
+    case "create_ingredient": {
+      await must(
+        "ingredients",
+        client.from("ingredients").insert(ingredientRow(mutation.ingredient)),
+      );
+      break;
+    }
+    case "create_user_profile": {
+      const { data: authData, error: authError } = await client.auth.admin.createUser({
+        email: mutation.email,
+        password: mutation.password,
+        email_confirm: true,
+        user_metadata: {
+          name: mutation.profile.name,
+          role: mutation.profile.role,
+        },
+      });
+
+      if (authError) {
+        throw new Error(`auth user: ${authError.message}`);
+      }
+
+      const authUserId = authData.user?.id;
+
+      if (!authUserId) {
+        throw new Error("auth user: usuario nao retornado");
+      }
+
+      try {
+        await must(
+          "user_profiles",
+          client.from("user_profiles").insert(userProfileRow(mutation.profile, authUserId)),
+        );
+      } catch (error) {
+        await client.auth.admin.deleteUser(authUserId).catch(() => undefined);
+        throw error;
+      }
       break;
     }
   }

@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ArrowUpRight,
   BarChart3,
+  Building2,
   ChefHat,
   CheckCircle2,
   CircleDollarSign,
@@ -15,15 +16,19 @@ import {
   MessageCircle,
   Minus,
   PanelsTopLeft,
+  PackagePlus,
   PackageCheck,
   Plus,
   ReceiptText,
   RefreshCw,
   Send,
+  Settings,
+  ShieldCheck,
   ShoppingCart,
   Store,
   Timer,
   Truck,
+  UserPlus,
   WalletCards,
   X,
 } from "lucide-react";
@@ -64,6 +69,7 @@ import type { SaboreMutation } from "@/lib/sabore-mutations";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import type {
   CashSession,
+  Ingredient,
   InventoryLot,
   InventoryMovement,
   Order,
@@ -74,6 +80,8 @@ import type {
   Role,
   SaboreData,
   SalesChannel,
+  UnitMeasure,
+  UserProfile,
 } from "@/lib/types";
 
 type View =
@@ -85,6 +93,7 @@ type View =
   | "catalog"
   | "stock"
   | "reports"
+  | "admin"
   | "integrations";
 
 type ComposerCustomItem = {
@@ -137,6 +146,29 @@ type TableForm = {
   seats: string;
 };
 
+type IngredientForm = {
+  name: string;
+  measure: UnitMeasure;
+  averageCost: string;
+  minimumStock: string;
+};
+
+type UnitSettingsForm = {
+  organizationName: string;
+  planPrice: string;
+  unitName: string;
+  city: string;
+  neighborhood: string;
+  fiscalEnabled: boolean;
+};
+
+type UserForm = {
+  name: string;
+  email: string;
+  password: string;
+  role: Role;
+};
+
 type StockDialog = "movement" | "lots" | null;
 
 const SmallTableIcon = (({
@@ -187,6 +219,22 @@ const paymentLabel: Record<PaymentMethod, string> = {
   online: "Online",
 };
 
+const roleLabel: Record<Role, string> = {
+  owner: "Dono",
+  manager: "Gerente",
+  cashier: "Caixa",
+  kitchen: "Cozinha",
+  stock: "Estoque",
+};
+
+const measureLabel: Record<UnitMeasure, string> = {
+  g: "Grama",
+  kg: "Quilo",
+  ml: "Mililitro",
+  l: "Litro",
+  un: "Unidade",
+};
+
 function getCurrentIso() {
   return new Date().toISOString();
 }
@@ -208,6 +256,7 @@ const navItems: Array<{
   { id: "catalog", label: "Cadastro", icon: PanelsTopLeft },
   { id: "stock", label: "Estoque", icon: PackageCheck },
   { id: "reports", label: "Relatorios", icon: BarChart3 },
+  { id: "admin", label: "Admin", icon: Settings },
   { id: "integrations", label: "Integracoes", icon: ReceiptText },
 ];
 
@@ -216,6 +265,27 @@ const emptyComposerNotes: ComposerState["notes"] = {};
 
 function cloneData<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function canAccessView(role: Role | undefined, view: View) {
+  if (!role || role === "owner" || role === "manager") return true;
+
+  const access: Record<Role, View[]> = {
+    owner: navItems.map((item) => item.id),
+    manager: navItems.map((item) => item.id),
+    cashier: ["overview", "service", "tables", "delivery", "reports"],
+    kitchen: ["kitchen"],
+    stock: ["stock", "catalog", "reports"],
+  };
+
+  return access[role].includes(view);
+}
+
+function defaultViewForRole(role: Role | undefined): View {
+  if (role === "kitchen") return "kitchen";
+  if (role === "stock") return "stock";
+
+  return "overview";
 }
 
 function orderStatusVariant(status: OrderStatus) {
@@ -294,8 +364,18 @@ export function SaboreApp({
   dataSource?: { source: "supabase" | "demo"; message: string };
   onLogout?: () => void;
 }) {
-  const [activeView, setActiveView] = useState<View>("overview");
+  const [activeView, setActiveView] = useState<View>(() =>
+    defaultViewForRole(currentUser?.role),
+  );
   const [stockDialog, setStockDialog] = useState<StockDialog>(null);
+  const [organization, setOrganization] = useState(() =>
+    cloneData(initialData.organization),
+  );
+  const [unit, setUnit] = useState(() => cloneData(initialData.unit));
+  const [users, setUsers] = useState(() => cloneData(initialData.users));
+  const [ingredients, setIngredients] = useState(() =>
+    cloneData(initialData.ingredients),
+  );
   const [orders, setOrders] = useState(() => cloneData(initialData.orders));
   const [lots, setLots] = useState(() => cloneData(initialData.lots));
   const [movements, setMovements] = useState(() => cloneData(initialData.movements));
@@ -319,6 +399,10 @@ export function SaboreApp({
   const data = useMemo(
     () => ({
       ...initialData,
+      organization,
+      unit,
+      users,
+      ingredients,
       orders,
       lots,
       movements,
@@ -327,8 +411,28 @@ export function SaboreApp({
       tables,
       cashSession,
     }),
-    [cashSession, initialData, lots, movements, orders, products, recipe, tables],
+    [
+      cashSession,
+      ingredients,
+      initialData,
+      lots,
+      movements,
+      orders,
+      organization,
+      products,
+      recipe,
+      tables,
+      unit,
+      users,
+    ],
   );
+  const availableNavItems = useMemo(
+    () => navItems.filter((item) => canAccessView(currentUser?.role, item.id)),
+    [currentUser?.role],
+  );
+  const visibleView = canAccessView(currentUser?.role, activeView)
+    ? activeView
+    : defaultViewForRole(currentUser?.role);
   const stockPositions = useMemo(
     () => calculateStockPositions(data.ingredients, lots, new Date(clockIso)),
     [clockIso, data.ingredients, lots],
@@ -413,6 +517,11 @@ export function SaboreApp({
   }
 
   function changeView(view: View) {
+    if (!canAccessView(currentUser?.role, view)) {
+      log("Perfil sem acesso a esta tela");
+      return;
+    }
+
     setComposer(null);
     setStockDialog(null);
     setActiveView(view);
@@ -924,6 +1033,83 @@ export function SaboreApp({
     void persistMutation({ type: "create_recipe_item", recipeItem: item });
   }
 
+  function addIngredient(form: IngredientForm) {
+    const averageCost = Math.max(0, Number(form.averageCost) || 0);
+    const minimumStock = Math.max(0, Number(form.minimumStock) || 0);
+
+    if (!form.name.trim()) {
+      log("Informe o nome do insumo para cadastrar");
+      return;
+    }
+
+    const ingredient: Ingredient = {
+      id: createId(),
+      unitId: data.unit.id,
+      name: form.name.trim(),
+      measure: form.measure,
+      averageCost,
+      minimumStock,
+    };
+
+    setIngredients((current) => [ingredient, ...current]);
+    log(`${ingredient.name} cadastrado como insumo`);
+    void persistMutation({ type: "create_ingredient", ingredient });
+  }
+
+  function updateUnitSettings(form: UnitSettingsForm) {
+    const planPrice = Math.max(0, Number(form.planPrice) || 0);
+
+    if (!form.organizationName.trim() || !form.unitName.trim()) {
+      log("Informe organizacao e unidade para salvar configuracao");
+      return;
+    }
+
+    const nextOrganization = {
+      ...data.organization,
+      name: form.organizationName.trim(),
+      planPrice,
+    };
+    const nextUnit = {
+      ...data.unit,
+      name: form.unitName.trim(),
+      city: form.city.trim() || data.unit.city,
+      neighborhood: form.neighborhood.trim() || data.unit.neighborhood,
+      fiscalEnabled: form.fiscalEnabled,
+    };
+
+    setOrganization(nextOrganization);
+    setUnit(nextUnit);
+    log(`Configuracao da unidade ${nextUnit.name} atualizada`);
+    void persistMutation({
+      type: "update_unit_settings",
+      organization: nextOrganization,
+      unit: nextUnit,
+    });
+  }
+
+  function createUserProfile(form: UserForm) {
+    if (!form.name.trim() || !form.email.trim() || form.password.length < 6) {
+      log("Informe nome, email e senha com pelo menos 6 caracteres");
+      return;
+    }
+
+    const user: UserProfile = {
+      id: createId(),
+      unitId: data.unit.id,
+      name: form.name.trim(),
+      role: form.role,
+    };
+
+    setUsers((current) => [user, ...current]);
+    log(`${user.name} criado como ${roleLabel[user.role]}`);
+    void persistMutation({
+      type: "create_user_profile",
+      email: form.email.trim(),
+      password: form.password,
+      profile: user,
+    });
+  }
+
   function adjustStock(form: StockAdjustmentForm) {
     const createdAt = timestamp();
     const ingredient = data.ingredients.find(
@@ -1025,14 +1211,14 @@ export function SaboreApp({
             </div>
             <Badge variant="success">{formatCurrency(data.organization.planPrice)}/mes</Badge>
           </div>
-          <nav className="mt-5 grid grid-cols-3 gap-2 lg:grid-cols-1">
-            {navItems.map((item) => {
+          <nav className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1">
+            {availableNavItems.map((item) => {
               const Icon = item.icon;
 
               return (
                 <Button
                   key={item.id}
-                  variant={activeView === item.id ? "secondary" : "ghost"}
+                  variant={visibleView === item.id ? "secondary" : "ghost"}
                   className="justify-start"
                   onClick={() => changeView(item.id)}
                 >
@@ -1090,18 +1276,24 @@ export function SaboreApp({
                 </div>
               )}
               <div className="grid grid-cols-3 gap-2 sm:flex">
-                <Button onClick={() => changeView("service")}>
-                  <ShoppingCart />
-                  Atendimento
-                </Button>
-                <Button variant="secondary" onClick={() => changeView("tables")}>
-                  <SmallTableIcon />
-                  Mesas
-                </Button>
-                <Button variant="outline" onClick={() => changeView("delivery")}>
-                  <Truck />
-                  Delivery
-                </Button>
+                {canAccessView(currentUser?.role, "service") && (
+                  <Button onClick={() => changeView("service")}>
+                    <ShoppingCart />
+                    Atendimento
+                  </Button>
+                )}
+                {canAccessView(currentUser?.role, "tables") && (
+                  <Button variant="secondary" onClick={() => changeView("tables")}>
+                    <SmallTableIcon />
+                    Mesas
+                  </Button>
+                )}
+                {canAccessView(currentUser?.role, "delivery") && (
+                  <Button variant="outline" onClick={() => changeView("delivery")}>
+                    <Truck />
+                    Delivery
+                  </Button>
+                )}
               </div>
             </div>
           </header>
@@ -1123,7 +1315,7 @@ export function SaboreApp({
             />
           )}
 
-          {activeView === "overview" && (
+          {visibleView === "overview" && (
             <OverviewView
               openOrders={openOrders.length}
               projectedTotal={projectedTotal}
@@ -1137,7 +1329,7 @@ export function SaboreApp({
               onCloseCash={closeCash}
             />
           )}
-          {activeView === "service" && (
+          {visibleView === "service" && (
             <ServiceView
               orders={orders}
               data={data}
@@ -1151,7 +1343,7 @@ export function SaboreApp({
               onFinalize={finalizeOrder}
             />
           )}
-          {activeView === "tables" && (
+          {visibleView === "tables" && (
             <TablesView
               orders={orders}
               data={data}
@@ -1165,7 +1357,7 @@ export function SaboreApp({
               onFinalize={finalizeOrder}
             />
           )}
-          {activeView === "delivery" && (
+          {visibleView === "delivery" && (
             <DeliveryView
               orders={orders}
               data={data}
@@ -1175,18 +1367,19 @@ export function SaboreApp({
               onSendWhatsApp={sendWhatsApp}
             />
           )}
-          {activeView === "kitchen" && (
+          {visibleView === "kitchen" && (
             <KitchenView orders={orders} data={data} onAdvance={advanceOrder} />
           )}
-          {activeView === "catalog" && (
+          {visibleView === "catalog" && (
             <CatalogView
               data={data}
               onAddProduct={addProduct}
+              onAddIngredient={addIngredient}
               onAddRecipeItem={addRecipeItem}
               onAddTable={addTable}
             />
           )}
-          {activeView === "stock" && (
+          {visibleView === "stock" && (
             <StockView
               positions={stockPositions}
               lots={lots}
@@ -1196,7 +1389,7 @@ export function SaboreApp({
               onAdjustStock={adjustStock}
             />
           )}
-          {activeView === "reports" && (
+          {visibleView === "reports" && (
             <ReportsView
               recipeCosts={recipeCosts}
               closing={closing}
@@ -1205,7 +1398,15 @@ export function SaboreApp({
               cmv={cmv}
             />
           )}
-          {activeView === "integrations" && (
+          {visibleView === "admin" && (
+            <AdminView
+              currentUser={currentUser}
+              data={data}
+              onCreateUser={createUserProfile}
+              onUpdateUnitSettings={updateUnitSettings}
+            />
+          )}
+          {visibleView === "integrations" && (
             <IntegrationsView data={data} orders={orders} />
           )}
         </main>
@@ -1852,7 +2053,7 @@ function MoneyField({
     <label className="grid gap-2 text-sm font-medium">
       {label}
       <input
-        className="h-10 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
+        className="h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
         inputMode="decimal"
         value={value}
         onChange={(event) => onChange(event.target.value.replace(",", "."))}
@@ -1867,20 +2068,23 @@ function TextField({
   onChange,
   placeholder,
   inputMode,
+  type = "text",
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  type?: string;
 }) {
   return (
     <label className="grid gap-2 text-sm font-medium">
       {label}
       <input
-        className="h-10 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
+        className="h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
         inputMode={inputMode}
         placeholder={placeholder}
+        type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -2342,11 +2546,13 @@ function KitchenView({
 function CatalogView({
   data,
   onAddProduct,
+  onAddIngredient,
   onAddRecipeItem,
   onAddTable,
 }: {
   data: SaboreData;
   onAddProduct: (form: ProductForm) => void;
+  onAddIngredient: (form: IngredientForm) => void;
   onAddRecipeItem: (form: RecipeForm) => void;
   onAddTable: (form: TableForm) => void;
 }) {
@@ -2364,6 +2570,12 @@ function CatalogView({
   const [tableForm, setTableForm] = useState<TableForm>({
     label: "",
     seats: "4",
+  });
+  const [ingredientForm, setIngredientForm] = useState<IngredientForm>({
+    name: "",
+    measure: "kg",
+    averageCost: "",
+    minimumStock: "",
   });
   const activeProducts = data.products.filter((product) => product.active);
   const selectedProductRecipe = data.recipe.filter(
@@ -2385,9 +2597,19 @@ function CatalogView({
     setTableForm((current) => ({ ...current, label: "" }));
   }
 
+  function submitIngredient() {
+    onAddIngredient(ingredientForm);
+    setIngredientForm((current) => ({
+      ...current,
+      name: "",
+      averageCost: "",
+      minimumStock: "",
+    }));
+  }
+
   return (
     <div className="space-y-5 pt-5">
-      <div className="grid gap-5 xl:grid-cols-3">
+      <div className="grid gap-5 xl:grid-cols-2 2xl:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle>Itens do cardapio</CardTitle>
@@ -2419,7 +2641,7 @@ function CatalogView({
             <label className="grid gap-2 text-sm font-medium">
               Praca
               <select
-                className="h-10 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
+                className="h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
                 value={productForm.preparationArea}
                 onChange={(event) =>
                   setProductForm((current) => ({
@@ -2442,6 +2664,66 @@ function CatalogView({
 
         <Card>
           <CardHeader>
+            <CardTitle>Insumos</CardTitle>
+            <CardDescription>Base para estoque manual e ficha tecnica.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <TextField
+              label="Nome do insumo"
+              value={ingredientForm.name}
+              onChange={(name) =>
+                setIngredientForm((current) => ({ ...current, name }))
+              }
+              placeholder="Arroz branco"
+            />
+            <label className="grid gap-2 text-sm font-medium">
+              Medida
+              <select
+                className="h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
+                value={ingredientForm.measure}
+                onChange={(event) =>
+                  setIngredientForm((current) => ({
+                    ...current,
+                    measure: event.target.value as UnitMeasure,
+                  }))
+                }
+              >
+                {Object.entries(measureLabel).map(([measure, label]) => (
+                  <option key={measure} value={measure}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <MoneyField
+                label="Custo medio"
+                value={ingredientForm.averageCost}
+                onChange={(averageCost) =>
+                  setIngredientForm((current) => ({ ...current, averageCost }))
+                }
+              />
+              <TextField
+                label="Estoque minimo"
+                value={ingredientForm.minimumStock}
+                onChange={(minimumStock) =>
+                  setIngredientForm((current) => ({ ...current, minimumStock }))
+                }
+                inputMode="decimal"
+              />
+            </div>
+            <Button className="w-full" variant="secondary" onClick={submitIngredient}>
+              <PackagePlus />
+              Cadastrar insumo
+            </Button>
+            <div className="rounded-md border border-border bg-muted/20 p-3 text-sm">
+              <Row label="Insumos ativos" value={String(data.ingredients.length)} strong />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Ficha tecnica</CardTitle>
             <CardDescription>Opcional para quem quer baixa automatica por receita.</CardDescription>
           </CardHeader>
@@ -2449,7 +2731,7 @@ function CatalogView({
             <label className="grid gap-2 text-sm font-medium">
               Produto
               <select
-                className="h-10 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
+                className="h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
                 value={recipeForm.productId}
                 onChange={(event) =>
                   setRecipeForm((current) => ({
@@ -2469,7 +2751,7 @@ function CatalogView({
               <label className="grid gap-2 text-sm font-medium">
                 Insumo
                 <select
-                  className="h-10 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
+                  className="h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
                   value={recipeForm.ingredientId}
                   onChange={(event) =>
                     setRecipeForm((current) => ({
@@ -2561,6 +2843,215 @@ function CatalogView({
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+function AdminView({
+  currentUser,
+  data,
+  onCreateUser,
+  onUpdateUnitSettings,
+}: {
+  currentUser?: { name: string; role: Role };
+  data: SaboreData;
+  onCreateUser: (form: UserForm) => void;
+  onUpdateUnitSettings: (form: UnitSettingsForm) => void;
+}) {
+  const [settingsForm, setSettingsForm] = useState<UnitSettingsForm>({
+    organizationName: data.organization.name,
+    planPrice: String(data.organization.planPrice),
+    unitName: data.unit.name,
+    city: data.unit.city,
+    neighborhood: data.unit.neighborhood,
+    fiscalEnabled: data.unit.fiscalEnabled,
+  });
+  const [userForm, setUserForm] = useState<UserForm>({
+    name: "",
+    email: "",
+    password: "",
+    role: "cashier",
+  });
+  const canManage = !currentUser || currentUser.role === "owner" || currentUser.role === "manager";
+
+  function submitUser() {
+    onCreateUser(userForm);
+    setUserForm((current) => ({ ...current, name: "", email: "", password: "" }));
+  }
+
+  return (
+    <div className="space-y-5 pt-5">
+      <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle>Configuracao da unidade</CardTitle>
+              <CardDescription>Dados base que aparecem no piloto e no fiscal.</CardDescription>
+            </div>
+            <Building2 className="size-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <TextField
+                label="Organizacao"
+                value={settingsForm.organizationName}
+                onChange={(organizationName) =>
+                  setSettingsForm((current) => ({ ...current, organizationName }))
+                }
+              />
+              <MoneyField
+                label="Mensalidade base"
+                value={settingsForm.planPrice}
+                onChange={(planPrice) =>
+                  setSettingsForm((current) => ({ ...current, planPrice }))
+                }
+              />
+              <TextField
+                label="Unidade"
+                value={settingsForm.unitName}
+                onChange={(unitName) =>
+                  setSettingsForm((current) => ({ ...current, unitName }))
+                }
+              />
+              <TextField
+                label="Cidade"
+                value={settingsForm.city}
+                onChange={(city) => setSettingsForm((current) => ({ ...current, city }))}
+              />
+              <TextField
+                label="Bairro"
+                value={settingsForm.neighborhood}
+                onChange={(neighborhood) =>
+                  setSettingsForm((current) => ({ ...current, neighborhood }))
+                }
+              />
+              <label className="flex min-h-10 items-center gap-3 rounded-md border border-border bg-background px-3 text-sm font-medium">
+                <input
+                  className="size-4 accent-primary"
+                  checked={settingsForm.fiscalEnabled}
+                  type="checkbox"
+                  onChange={(event) =>
+                    setSettingsForm((current) => ({
+                      ...current,
+                      fiscalEnabled: event.target.checked,
+                    }))
+                  }
+                />
+                NFC-e habilitada via provedor
+              </label>
+            </div>
+            <Button disabled={!canManage} onClick={() => onUpdateUnitSettings(settingsForm)}>
+              <Settings />
+              Salvar configuracao
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle>Usuarios e acessos</CardTitle>
+              <CardDescription>Crie login operacional sem abrir SQL.</CardDescription>
+            </div>
+            <ShieldCheck className="size-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextField
+                label="Nome"
+                value={userForm.name}
+                onChange={(name) => setUserForm((current) => ({ ...current, name }))}
+                placeholder="Pessoa do caixa"
+              />
+              <TextField
+                label="Email"
+                type="email"
+                value={userForm.email}
+                onChange={(email) => setUserForm((current) => ({ ...current, email }))}
+              />
+              <TextField
+                label="Senha inicial"
+                type="password"
+                value={userForm.password}
+                onChange={(password) =>
+                  setUserForm((current) => ({ ...current, password }))
+                }
+              />
+              <label className="grid gap-2 text-sm font-medium">
+                Cargo
+                <select
+                  className="h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
+                  value={userForm.role}
+                  onChange={(event) =>
+                    setUserForm((current) => ({
+                      ...current,
+                      role: event.target.value as Role,
+                    }))
+                  }
+                >
+                  {Object.entries(roleLabel).map(([role, label]) => (
+                    <option key={role} value={role}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <Button disabled={!canManage} onClick={submitUser}>
+              <UserPlus />
+              Criar usuario
+            </Button>
+            <div className="overflow-x-auto rounded-md border border-border">
+              <table className="w-full min-w-[460px] text-left text-sm">
+                <thead className="bg-muted/30 text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-3">Usuario</th>
+                    <th>Cargo</th>
+                    <th>Unidade</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.users.map((user) => (
+                    <tr key={user.id} className="border-t border-border">
+                      <td className="px-3 py-3 font-medium">{user.name}</td>
+                      <td>
+                        <Badge variant={user.role === "owner" ? "info" : "neutral"}>
+                          {roleLabel[user.role]}
+                        </Badge>
+                      </td>
+                      <td className="text-muted-foreground">{data.unit.name}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Pacotes e modulos</CardTitle>
+          <CardDescription>Base comercial pensada para food trucks e negocios pequenos.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {[
+              ["PDV base", "Atendimento, mesas, delivery proprio e caixa manual"],
+              ["KDS cozinha", "Fila de preparo como modulo adicional"],
+              ["Estoque e CMV", "Insumos, baixa manual, validade e ficha tecnica"],
+              ["Fiscal/WhatsApp", "NFC-e e mensagens guiadas por custos externos"],
+            ].map(([title, description]) => (
+              <div key={title} className="rounded-lg border border-border bg-muted/20 p-4">
+                <p className="font-medium">{title}</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -2686,7 +3177,7 @@ function StockView({
             <label className="grid gap-2 text-sm font-medium">
               Insumo
               <select
-                className="h-10 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
+                className="h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
                 value={stockForm.ingredientId}
                 onChange={(event) =>
                   setStockForm((current) => ({
@@ -2727,7 +3218,7 @@ function StockView({
             <label className="grid gap-2 text-sm font-medium">
               Motivo
               <select
-                className="h-10 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
+                className="h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
                 value={stockForm.reason}
                 onChange={(event) =>
                   setStockForm((current) => ({

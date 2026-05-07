@@ -34,6 +34,10 @@ create table public.user_profiles (
   created_at timestamptz not null default now()
 );
 
+create unique index user_profiles_auth_user_id_key
+on public.user_profiles(auth_user_id)
+where auth_user_id is not null;
+
 create table public.dining_tables (
   id uuid primary key default gen_random_uuid(),
   unit_id uuid not null references public.restaurant_units(id) on delete cascade,
