@@ -1,3 +1,4 @@
+import { getServerEnv } from "@/lib/env/server";
 import type {
   WhatsAppProvider,
   WhatsAppResult,
@@ -18,12 +19,13 @@ export class WhatsAppCloudProvider implements WhatsAppProvider {
   constructor(
     private readonly token: string,
     private readonly phoneNumberId: string,
+    private readonly graphBaseUrl: string,
     private readonly graphVersion = "v22.0",
   ) {}
 
   async sendTemplate(input: WhatsAppTemplateInput): Promise<WhatsAppResult> {
     const response = await fetch(
-      `https://graph.facebook.com/${this.graphVersion}/${this.phoneNumberId}/messages`,
+      `${this.graphBaseUrl}/${this.graphVersion}/${this.phoneNumberId}/messages`,
       {
         method: "POST",
         headers: {
@@ -65,10 +67,14 @@ export class WhatsAppCloudProvider implements WhatsAppProvider {
 }
 
 export function getWhatsAppProvider(): WhatsAppProvider {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const env = getServerEnv();
 
-  return token && phoneNumberId
-    ? new WhatsAppCloudProvider(token, phoneNumberId)
+  return env.whatsappAccessToken && env.whatsappPhoneNumberId
+    ? new WhatsAppCloudProvider(
+        env.whatsappAccessToken,
+        env.whatsappPhoneNumberId,
+        env.whatsappGraphBaseUrl,
+        env.whatsappGraphVersion,
+      )
     : new MockWhatsAppProvider();
 }

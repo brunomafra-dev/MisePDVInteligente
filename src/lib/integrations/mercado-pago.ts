@@ -1,3 +1,4 @@
+import { getServerEnv } from "@/lib/env/server";
 import type {
   CreatePaymentInput,
   PaymentProvider,
@@ -53,9 +54,12 @@ export class MercadoPagoProvider implements PaymentProvider {
 }
 
 export function getPaymentProvider(): PaymentProvider {
-  const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+  const env = getServerEnv();
 
-  return accessToken
-    ? new MercadoPagoProvider(accessToken)
+  return env.mercadoPagoAccessToken
+    ? new MercadoPagoProvider(
+        env.mercadoPagoAccessToken,
+        env.mercadoPagoBaseUrl,
+      )
     : new MockPaymentProvider();
 }

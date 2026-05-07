@@ -1,3 +1,4 @@
+import { getServerEnv } from "@/lib/env/server";
 import type {
   FiscalProvider,
   FiscalResult,
@@ -82,7 +83,9 @@ export class FocusNfeProvider implements FiscalProvider {
 }
 
 export function getFiscalProvider(): FiscalProvider {
-  const token = process.env.FOCUS_NFE_TOKEN;
+  const env = getServerEnv();
 
-  return token ? new FocusNfeProvider(token) : new MockFiscalProvider();
+  return env.focusNfeToken
+    ? new FocusNfeProvider(env.focusNfeToken, env.focusNfeBaseUrl)
+    : new MockFiscalProvider();
 }

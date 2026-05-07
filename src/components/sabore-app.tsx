@@ -3456,7 +3456,7 @@ function IntegrationsView({ data, orders }: { data: SaboreData; orders: Order[] 
         icon={ReceiptText}
         title="Focus NFe"
         badge="Adapter pronto"
-        description="Endpoint /api/fiscal/nfce valida payload e usa mock ate FOCUS_NFE_TOKEN existir."
+        description="Endpoint /api/fiscal/nfce valida payload e usa mock ate a credencial fiscal ser configurada."
         lines={[
           "NFC-e modelo 65",
           "Referencia unica por pedido",
@@ -3467,7 +3467,7 @@ function IntegrationsView({ data, orders }: { data: SaboreData; orders: Order[] 
         icon={CreditCard}
         title="Mercado Pago"
         badge="Pix e checkout"
-        description="Endpoint /api/payments/mercado-pago cria cobranca mock ou real com token."
+        description="Endpoint /api/payments/mercado-pago cria cobranca mock ou real com credencial do provedor."
         lines={[
           `Ultimo pedido: ${lastOrder ? `#${lastOrder.code}` : "-"}`,
           `Total exemplo: ${totals ? formatCurrency(totals.total) : "-"}`,

@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { getServerEnv } from "@/lib/env/server";
 
 let adminClient: SupabaseClient | null = null;
 let dataClient: SupabaseClient | null = null;
@@ -9,10 +10,9 @@ export function normalizeSupabaseUrl(url: string) {
 }
 
 export function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    ? normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL)
-    : "";
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const env = getServerEnv();
+  const url = env.supabaseUrl ? normalizeSupabaseUrl(env.supabaseUrl) : "";
+  const key = env.supabaseServiceRoleKey;
 
   if (!url || !key) {
     throw new Error("Supabase env vars are missing");
@@ -28,10 +28,9 @@ export function getSupabaseAdmin() {
 }
 
 export function getSupabaseDataClient() {
-  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const env = getServerEnv();
+  const rawUrl = env.supabaseUrl;
+  const key = env.supabaseServiceRoleKey ?? env.supabaseAnonKey;
 
   if (!rawUrl || !key) {
     return null;
@@ -49,8 +48,9 @@ export function getSupabaseDataClient() {
 }
 
 export function getSupabaseAuthClient() {
-  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const env = getServerEnv();
+  const rawUrl = env.supabaseUrl;
+  const key = env.supabaseAnonKey;
 
   if (!rawUrl || !key) {
     throw new Error("Supabase auth env vars are missing");

@@ -9,8 +9,8 @@ Sabore is a web-first restaurant operating system for local pilots in Maceio.
 - Cash: manual payment registry and turn closing, without TEF in v1.
 - Stock: ingredients, lots, expiry, minimum stock and FEFO-style consumption.
 - Recipe/CMV: each sale can generate inventory movements from ficha tecnica.
-- Fiscal: `/api/fiscal/nfce` validates payloads and uses Focus NFe when `FOCUS_NFE_TOKEN` exists; otherwise it returns a mock authorization.
-- Payments: `/api/payments/mercado-pago` creates mock payments unless `MERCADO_PAGO_ACCESS_TOKEN` exists.
+- Fiscal: `/api/fiscal/nfce` validates payloads and uses Focus NFe when server-side credentials exist; otherwise it returns a mock authorization.
+- Payments: `/api/payments/mercado-pago` creates mock payments unless server-side Mercado Pago credentials exist.
 - WhatsApp: `/api/whatsapp/send` sends official templates when Meta credentials exist; otherwise it queues a mock message.
 
 ## Data Strategy
