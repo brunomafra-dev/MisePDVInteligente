@@ -1,4 +1,14 @@
 import { z } from "zod";
+import {
+  emailField,
+  moneyField,
+  optionalTextField,
+  passwordField,
+  positiveMoneyField,
+  quantityField,
+  signedQuantityField,
+  textField,
+} from "@/lib/security/sanitize";
 
 const uuidSchema = z.string().uuid();
 const roleSchema = z.enum(["owner", "manager", "cashier", "kitchen", "stock"]);
@@ -24,33 +34,33 @@ const orderStatusSchema = z.enum([
 const orderItemSchema = z.object({
   id: uuidSchema,
   productId: uuidSchema,
-  quantity: z.number().positive(),
-  notes: z.string().optional(),
-  name: z.string().optional(),
-  unitPrice: z.number().nonnegative().optional(),
+  quantity: quantityField(500),
+  notes: optionalTextField(500),
+  name: optionalTextField(160),
+  unitPrice: moneyField().optional(),
 });
 
 const paymentSchema = z.object({
   id: uuidSchema,
   method: paymentMethodSchema,
-  amount: z.number().positive(),
-  receivedAt: z.string().min(1),
-  externalId: z.string().optional(),
+  amount: positiveMoneyField(),
+  receivedAt: textField(40),
+  externalId: optionalTextField(160),
 });
 
 const orderSchema = z.object({
   id: uuidSchema,
   unitId: uuidSchema,
-  code: z.string().min(1),
+  code: textField(32),
   channel: z.enum(["counter", "table", "delivery"]),
   status: orderStatusSchema,
-  openedAt: z.string().min(1),
+  openedAt: textField(40),
   tableId: uuidSchema.optional(),
   customerId: uuidSchema.optional(),
-  items: z.array(orderItemSchema).min(1),
-  deliveryFee: z.number().nonnegative(),
-  discount: z.number().nonnegative(),
-  payments: z.array(paymentSchema),
+  items: z.array(orderItemSchema).min(1).max(100),
+  deliveryFee: moneyField(),
+  discount: moneyField(),
+  payments: z.array(paymentSchema).max(20),
   fiscalStatus: z.enum(["disabled", "pending", "authorized", "rejected"]),
   whatsappStatus: z.enum(["not_sent", "queued", "sent", "failed"]),
 });
@@ -67,29 +77,29 @@ const movementSchema = z.object({
     "waste",
     "manual_exit",
   ]),
-  quantity: z.number(),
-  costImpact: z.number().nonnegative(),
-  reason: z.string().min(1),
-  createdAt: z.string().min(1),
+  quantity: signedQuantityField(),
+  costImpact: moneyField(),
+  reason: textField(160),
+  createdAt: textField(40),
   orderId: uuidSchema.optional(),
 });
 
 const lotSchema = z.object({
   id: uuidSchema,
   ingredientId: uuidSchema,
-  supplier: z.string().min(1),
-  batchCode: z.string().min(1),
-  quantity: z.number().nonnegative(),
-  expiresAt: z.string().min(1),
-  receivedAt: z.string().min(1),
+  supplier: textField(120),
+  batchCode: textField(80),
+  quantity: moneyField(100_000),
+  expiresAt: textField(20),
+  receivedAt: textField(20),
 });
 
 const productSchema = z.object({
   id: uuidSchema,
   unitId: uuidSchema,
-  name: z.string().min(1),
-  category: z.string().min(1),
-  price: z.number().nonnegative(),
+  name: textField(160),
+  category: textField(80),
+  price: moneyField(),
   active: z.boolean(),
   preparationArea: z.enum(["kitchen", "bar", "pastry"]),
 });
@@ -98,45 +108,45 @@ const recipeItemSchema = z.object({
   id: uuidSchema,
   productId: uuidSchema,
   ingredientId: uuidSchema,
-  quantity: z.number().positive(),
+  quantity: quantityField(),
 });
 
 const tableSchema = z.object({
   id: uuidSchema,
   unitId: uuidSchema,
-  label: z.string().min(1),
-  seats: z.number().int().positive(),
+  label: textField(60),
+  seats: z.number().int().positive().max(500),
   status: z.enum(["free", "open", "closing"]),
 });
 
 const organizationSettingsSchema = z.object({
   id: uuidSchema,
-  name: z.string().min(1),
-  planPrice: z.number().nonnegative(),
+  name: textField(160),
+  planPrice: moneyField(10_000),
 });
 
 const unitSettingsSchema = z.object({
   id: uuidSchema,
   organizationId: uuidSchema,
-  name: z.string().min(1),
-  city: z.string().min(1),
-  neighborhood: z.string().min(1),
+  name: textField(160),
+  city: textField(100),
+  neighborhood: textField(100),
   fiscalEnabled: z.boolean(),
 });
 
 const ingredientSchema = z.object({
   id: uuidSchema,
   unitId: uuidSchema,
-  name: z.string().min(1),
+  name: textField(160),
   measure: unitMeasureSchema,
-  averageCost: z.number().nonnegative(),
-  minimumStock: z.number().nonnegative(),
+  averageCost: moneyField(100_000),
+  minimumStock: moneyField(100_000),
 });
 
 const userProfileSchema = z.object({
   id: uuidSchema,
   unitId: uuidSchema,
-  name: z.string().min(1),
+  name: textField(160),
   role: roleSchema,
 });
 
@@ -144,13 +154,13 @@ export const saboreMutationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("create_order"),
     order: orderSchema,
-    movements: z.array(movementSchema),
+    movements: z.array(movementSchema).max(500),
   }),
   z.object({
     type: z.literal("append_order_items"),
     orderId: uuidSchema,
-    items: z.array(orderItemSchema).min(1),
-    movements: z.array(movementSchema),
+    items: z.array(orderItemSchema).min(1).max(100),
+    movements: z.array(movementSchema).max(500),
   }),
   z.object({
     type: z.literal("update_order_status"),
@@ -171,7 +181,7 @@ export const saboreMutationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("close_cash"),
     cashSessionId: uuidSchema,
-    expectedAmount: z.number().nonnegative(),
+    expectedAmount: moneyField(),
   }),
   z.object({
     type: z.literal("create_product"),
@@ -201,8 +211,8 @@ export const saboreMutationSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("create_user_profile"),
-    email: z.string().email(),
-    password: z.string().min(6),
+    email: emailField(),
+    password: passwordField(6, 256),
     profile: userProfileSchema,
   }),
 ]);

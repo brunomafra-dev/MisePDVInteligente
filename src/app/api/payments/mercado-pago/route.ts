@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createPaymentSchema } from "@/lib/integrations/contracts";
 import { getPaymentProvider } from "@/lib/integrations/mercado-pago";
+import {
+  parseJsonPayload,
+  PayloadError,
+  payloadErrorResponse,
+} from "@/lib/security/request";
 import { apiRateLimit, enforceRateLimit } from "@/lib/security/rate-limit";
 
 export async function POST(request: Request) {
@@ -8,7 +13,18 @@ export async function POST(request: Request) {
 
   if (limited) return limited;
 
-  const payload = await request.json().catch(() => null);
+  let payload: unknown;
+
+  try {
+    payload = await parseJsonPayload(request, { maxBytes: 16 * 1024 });
+  } catch (error) {
+    if (error instanceof PayloadError) {
+      return payloadErrorResponse(error);
+    }
+
+    throw error;
+  }
+
   const parsed = createPaymentSchema.safeParse(payload);
 
   if (!parsed.success) {

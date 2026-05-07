@@ -6,6 +6,11 @@ import {
   getAuthenticatedProfile,
   type AuthenticatedProfile,
 } from "@/lib/supabase/access";
+import {
+  parseJsonPayload,
+  PayloadError,
+  payloadErrorResponse,
+} from "@/lib/security/request";
 import { apiRateLimit, enforceRateLimit } from "@/lib/security/rate-limit";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
@@ -591,7 +596,18 @@ export async function POST(request: Request) {
 
   if (limited) return limited;
 
-  const payload = await request.json().catch(() => null);
+  let payload: unknown;
+
+  try {
+    payload = await parseJsonPayload(request, { maxBytes: 128 * 1024 });
+  } catch (error) {
+    if (error instanceof PayloadError) {
+      return payloadErrorResponse(error);
+    }
+
+    throw error;
+  }
+
   const parsed = saboreMutationSchema.safeParse(payload);
 
   if (!parsed.success) {

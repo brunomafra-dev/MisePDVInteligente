@@ -1,49 +1,56 @@
 import { z } from "zod";
+import {
+  emailField,
+  optionalTextField,
+  positiveMoneyField,
+  quantityField,
+  textField,
+} from "@/lib/security/sanitize";
 
 export const fiscalItemSchema = z.object({
-  sku: z.string().min(1),
-  name: z.string().min(1),
-  quantity: z.number().positive(),
-  unitPrice: z.number().nonnegative(),
-  ncm: z.string().optional(),
-  cfop: z.string().optional(),
+  sku: textField(80),
+  name: textField(160),
+  quantity: quantityField(500),
+  unitPrice: positiveMoneyField(),
+  ncm: optionalTextField(12),
+  cfop: optionalTextField(8),
 });
 
 export const fiscalCustomerSchema = z.object({
-  name: z.string().optional(),
-  cpf: z.string().optional(),
-  phone: z.string().optional(),
+  name: optionalTextField(160),
+  cpf: optionalTextField(20),
+  phone: optionalTextField(30),
 });
 
 export const issueNfceSchema = z.object({
-  unitId: z.string().min(1),
-  orderId: z.string().min(1),
-  reference: z.string().min(1),
+  unitId: textField(80),
+  orderId: textField(80),
+  reference: textField(80),
   customer: fiscalCustomerSchema.optional(),
-  items: z.array(fiscalItemSchema).min(1),
+  items: z.array(fiscalItemSchema).min(1).max(100),
   payments: z.array(
     z.object({
-      method: z.string().min(1),
-      amount: z.number().positive(),
+      method: textField(40),
+      amount: positiveMoneyField(),
     }),
-  ),
+  ).min(1).max(20),
   delivery: z.boolean().default(false),
-  total: z.number().positive(),
+  total: positiveMoneyField(),
 });
 
 export const createPaymentSchema = z.object({
-  unitId: z.string().min(1),
-  orderId: z.string().min(1),
-  amount: z.number().positive(),
+  unitId: textField(80),
+  orderId: textField(80),
+  amount: positiveMoneyField(),
   method: z.enum(["pix", "card"]),
-  customerEmail: z.string().email().optional(),
+  customerEmail: emailField().optional(),
 });
 
 export const whatsappTemplateSchema = z.object({
-  unitId: z.string().min(1),
-  to: z.string().min(8),
-  templateName: z.string().min(1),
-  parameters: z.record(z.string(), z.string()).default({}),
+  unitId: textField(80),
+  to: textField(30, 8),
+  templateName: textField(80),
+  parameters: z.record(textField(80), textField(500)).default({}),
 });
 
 export type IssueNfceInput = z.infer<typeof issueNfceSchema>;

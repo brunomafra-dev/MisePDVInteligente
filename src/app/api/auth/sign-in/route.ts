@@ -1,12 +1,18 @@
 import { z } from "zod";
+import {
+  parseJsonPayload,
+  PayloadError,
+  payloadErrorResponse,
+} from "@/lib/security/request";
 import { authRateLimit, enforceRateLimit } from "@/lib/security/rate-limit";
+import { emailField, passwordField, sanitizeText } from "@/lib/security/sanitize";
 import { getSupabaseAuthClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 const signInSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1).max(256),
+  email: emailField(),
+  password: passwordField(1, 256),
 });
 
 function payloadEmail(payload: unknown) {
@@ -16,11 +22,22 @@ function payloadEmail(payload: unknown) {
 
   const email = payload.email;
 
-  return typeof email === "string" ? email : "invalid";
+  return typeof email === "string" ? sanitizeText(email).toLowerCase() : "invalid";
 }
 
 export async function POST(request: Request) {
-  const payload = await request.json().catch(() => null);
+  let payload: unknown;
+
+  try {
+    payload = await parseJsonPayload(request, { maxBytes: 8_192 });
+  } catch (error) {
+    if (error instanceof PayloadError) {
+      return payloadErrorResponse(error);
+    }
+
+    throw error;
+  }
+
   const limited = await enforceRateLimit(
     request,
     authRateLimit("auth:sign-in", payloadEmail(payload)),

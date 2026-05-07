@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  parseJsonPayload,
+  PayloadError,
+  payloadErrorResponse,
+} from "@/lib/security/request";
 import { apiRateLimit, enforceRateLimit } from "@/lib/security/rate-limit";
 
 const seenEvents = new Set<string>();
@@ -12,7 +17,18 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   const eventId = request.headers.get("x-request-id") ?? crypto.randomUUID();
-  const payload = await request.json().catch(() => ({}));
+  let payload: unknown;
+
+  try {
+    payload = await parseJsonPayload(request, { maxBytes: 64 * 1024 });
+  } catch (error) {
+    if (error instanceof PayloadError) {
+      return payloadErrorResponse(error);
+    }
+
+    throw error;
+  }
+
   const duplicate = seenEvents.has(eventId);
 
   seenEvents.add(eventId);
