@@ -1,7 +1,7 @@
-import { SaboreAuthShell } from "@/components/sabore-auth-shell";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function AppPage() {
-  return <SaboreAuthShell />;
+  redirect("/");
 }

@@ -164,7 +164,7 @@ async function verifyDesktop(browser) {
   });
   page.on("pageerror", (error) => errors.push(error.message));
 
-  await page.goto(baseUrl, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/site`, { waitUntil: "networkidle" });
   const callToAction = await page.getByRole("link", { name: /ver demonstracao/i }).count();
 
   const textLength = (await page.locator("body").innerText()).trim().length;
@@ -191,7 +191,7 @@ async function verifyMobile(browser) {
   });
   page.on("pageerror", (error) => errors.push(error.message));
 
-  await page.goto(`${baseUrl}/app`, { waitUntil: "networkidle" });
+  await page.goto(baseUrl, { waitUntil: "networkidle" });
   await page.getByLabel(/^Email$/).fill(smokeEmail);
   await page.getByLabel(/^Senha$/).fill(smokePassword);
   await page.getByRole("button", { name: /^Entrar$/ }).click();

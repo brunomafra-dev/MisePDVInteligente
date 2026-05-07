@@ -12,7 +12,18 @@ First, run the development server:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to access the app.
+
+## Public Routes
+
+- `/`: Sabore app and authentication flow.
+- `/site`: public landing page.
+- `/suporte`: public support and contact guidance.
+- `/termos-de-uso`: terms of use draft.
+- `/politica-de-privacidade`: privacy policy draft.
+- `/politica-de-cookies`: cookie policy draft.
+- `/acordo-de-tratamento-de-dados`: LGPD data processing agreement draft.
+- `/app`: legacy redirect to `/`.
 
 ## Scripts
 

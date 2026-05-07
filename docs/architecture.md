@@ -13,6 +13,14 @@ Sabore is a web-first restaurant operating system for local pilots in Maceio.
 - Payments: `/api/payments/mercado-pago` creates mock payments unless server-side Mercado Pago credentials exist.
 - WhatsApp: `/api/whatsapp/send` sends official templates when Meta credentials exist; otherwise it queues a mock message.
 
+## Routing
+
+- `/`: authenticated Sabore app.
+- `/site`: public landing page.
+- `/suporte`: public support page and support boundaries.
+- `/termos-de-uso`, `/politica-de-privacidade`, `/politica-de-cookies`, `/acordo-de-tratamento-de-dados`: public legal drafts for pre-launch review.
+- `/app`: legacy redirect to `/`.
+
 ## Data Strategy
 
 The UI attempts to load Supabase data server-side when env vars are present. If env vars are missing, RLS blocks the read, or the database has not been seeded, it falls back to `src/lib/demo-data.ts`. Run `supabase/schema.sql` first and `supabase/seed.sql` second to load the pilot dataset.
