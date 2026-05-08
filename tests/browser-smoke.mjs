@@ -195,16 +195,25 @@ async function verifyMobile(browser) {
   await page.getByLabel(/^Email$/).fill(smokeEmail);
   await page.getByLabel(/^Senha$/).fill(smokePassword);
   await page.getByRole("button", { name: /^Entrar$/ }).click();
-  await page.getByRole("button", { name: /^Delivery$/ }).first().waitFor();
+  await page.getByRole("button", { name: /^Atendimento$/ }).first().waitFor();
 
-  await page.getByRole("button", { name: /^Delivery$/ }).first().click();
-  await page.waitForTimeout(200);
+  const initialAppText = await page.locator("body").innerText();
+  const planBadgeUsesName =
+    initialAppText.includes("Plano -") && !initialAppText.includes("Essencial R$");
   const supabaseSourceVisible = (await page.locator("body").innerText()).includes(
     "Supabase",
   );
-  const deliveryStartsClosed = (await page.locator("body").innerText()).includes(
-    "Nenhum delivery aberto.",
-  );
+  const operationFeaturesVisible =
+    (await page.getByRole("button", { name: /^Delivery$/ }).count()) > 0;
+  let deliveryStartsClosed = true;
+
+  if (operationFeaturesVisible) {
+    await page.getByRole("button", { name: /^Delivery$/ }).first().click();
+    await page.waitForTimeout(200);
+    deliveryStartsClosed = (await page.locator("body").innerText()).includes(
+      "Nenhum delivery aberto.",
+    );
+  }
 
   await page.getByRole("button", { name: /^Atendimento$/ }).first().click();
   await page.waitForTimeout(200);
@@ -219,7 +228,9 @@ async function verifyMobile(browser) {
     .getByText(/Monte sua pizza/i)
     .first()
     .isVisible();
-  await page.getByRole("button", { name: /^Cozinha$/ }).click();
+  await page
+    .getByRole("button", { name: operationFeaturesVisible ? /^Cozinha$/ : /^Estoque$/ })
+    .click();
   await page.waitForTimeout(300);
   const composerClearedOnNavigation = !(
     await page.locator("body").innerText()
@@ -231,13 +242,17 @@ async function verifyMobile(browser) {
   await page.getByRole("button", { name: /^Abrir pedido$/ }).click();
   await page.waitForTimeout(300);
 
-  await page.getByRole("button", { name: /^Cozinha$/ }).click();
-  await page.waitForTimeout(300);
-  const kitchenText = await page.locator("body").innerText();
-  const kitchenHasRealOrder =
-    kitchenText.includes("Fila") &&
-    /#\d+/.test(kitchenText) &&
-    /(?:0|1) min/.test(kitchenText);
+  let kitchenHasRealOrder = true;
+
+  if (operationFeaturesVisible) {
+    await page.getByRole("button", { name: /^Cozinha$/ }).click();
+    await page.waitForTimeout(300);
+    const kitchenText = await page.locator("body").innerText();
+    kitchenHasRealOrder =
+      kitchenText.includes("Fila") &&
+      /#\d+/.test(kitchenText) &&
+      /(?:0|1) min/.test(kitchenText);
+  }
 
   await page.getByRole("button", { name: /^Atendimento$/ }).first().click();
   await page.waitForTimeout(300);
@@ -258,8 +273,10 @@ async function verifyMobile(browser) {
   const catalogText = await page.locator("body").innerText();
   const catalogFormsVisible =
     catalogText.includes("Itens do cardapio") &&
-    catalogText.includes("Ficha tecnica") &&
-    catalogText.includes("Mesas e lugares");
+    catalogText.includes("Mesas e lugares") &&
+    (operationFeaturesVisible
+      ? catalogText.includes("Ficha tecnica")
+      : !catalogText.includes("Ficha tecnica"));
 
   await page.getByRole("button", { name: /^Estoque$/ }).click();
   await page.waitForTimeout(300);
@@ -277,13 +294,17 @@ async function verifyMobile(browser) {
     .isVisible();
   await page.getByRole("button", { name: /^Fechar$/ }).click();
 
-  await page.getByRole("button", { name: /^Lotes e validade$/ }).click();
-  await page.waitForTimeout(200);
-  const lotsPopupVisible = await page
-    .getByText(/Controle FEFO/i)
-    .first()
-    .isVisible();
-  await page.getByRole("button", { name: /^Fechar$/ }).click();
+  let lotsPopupVisible = true;
+
+  if (operationFeaturesVisible) {
+    await page.getByRole("button", { name: /^Lotes e validade$/ }).click();
+    await page.waitForTimeout(200);
+    lotsPopupVisible = await page
+      .getByText(/Controle FEFO/i)
+      .first()
+      .isVisible();
+    await page.getByRole("button", { name: /^Fechar$/ }).click();
+  }
 
   await page.getByRole("button", { name: /^Admin$/ }).click();
   await page.waitForTimeout(300);
@@ -291,7 +312,7 @@ async function verifyMobile(browser) {
   const adminVisible =
     adminText.includes("Configuracao da unidade") &&
     adminText.includes("Usuarios e acessos") &&
-    adminText.includes("Pacotes e modulos");
+    adminText.includes("Planos e modulos");
 
   const bodyText = (await page.locator("body").innerText()).trim();
   const textLength = bodyText.length;
@@ -322,6 +343,7 @@ async function verifyMobile(browser) {
     movementPopupVisible,
     lotsPopupVisible,
     adminVisible,
+    planBadgeUsesName,
     errors,
   };
 }
@@ -362,6 +384,7 @@ if (
   !mobile.movementPopupVisible ||
   !mobile.lotsPopupVisible ||
   !mobile.adminVisible ||
+  !mobile.planBadgeUsesName ||
   !mobile.composerClearedOnNavigation
 ) {
   console.error(JSON.stringify({ desktop, mobile }, null, 2));

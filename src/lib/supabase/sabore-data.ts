@@ -10,6 +10,7 @@ import type {
   Order,
   OrderItem,
   Payment,
+  PlanCode,
   Product,
   RecipeItem,
   RestaurantUnit,
@@ -122,6 +123,12 @@ function mapUnit(row: DbRow): RestaurantUnit {
   };
 }
 
+function planCodeValue(row: DbRow): PlanCode {
+  const value = stringValue(row, "plan_code", "essential");
+
+  return value === "operation" ? "operation" : "essential";
+}
+
 function mapOrder(
   row: DbRow,
   itemsByOrder: Record<string, DbRow[]>,
@@ -211,7 +218,8 @@ function mapSaboreData({
     organization: {
       id: stringValue(organizationRow, "id"),
       name: stringValue(organizationRow, "name"),
-      planPrice: numberValue(organizationRow, "plan_price", 69.9),
+      planCode: planCodeValue(organizationRow),
+      planPrice: numberValue(organizationRow, "plan_price", 59.9),
     },
     unit: mapUnit(unit),
     users: userRows.map<UserProfile>((row) => ({
@@ -457,7 +465,8 @@ export async function getSaboreData(): Promise<SaboreDataResult> {
       organization: {
         id: stringValue(organizationRow, "id"),
         name: stringValue(organizationRow, "name"),
-        planPrice: numberValue(organizationRow, "plan_price", 69.9),
+        planCode: planCodeValue(organizationRow),
+        planPrice: numberValue(organizationRow, "plan_price", 59.9),
       },
       unit: mapUnit(unit),
       users: userRows.map<UserProfile>((row) => ({

@@ -1,8 +1,18 @@
 # Sabore
 
-SaaS/PDV inteligente para restaurantes locais: pedidos de balcao, mesa e delivery proprio, cozinha, caixa manual, estoque, ficha tecnica, CMV, validade, NFC-e via API fiscal e WhatsApp guiado.
+SaaS/PDV inteligente para restaurantes locais: pedidos de balcao, mesa e delivery proprio, cozinha, caixa manual, estoque, ficha tecnica, CMV, validade, recibo nao fiscal e modulos opcionais.
 
-O app atual entrega um MVP navegavel com dados demo e integrações mockadas. Quando as variaveis de ambiente forem configuradas, os adapters passam a chamar Focus NFe, Mercado Pago e WhatsApp Cloud API.
+O app atual entrega um MVP navegavel com dados demo e integracoes mockadas. O plano base gera conta/recibo nao fiscal; fiscal NFC-e, marketplaces e WhatsApp IA entram como modulos assistidos.
+
+## Commercial Model
+
+- Essencial: R$59,90/month.
+- Operacao: R$89,90/month.
+- Site Delivery Proprio: R$300 setup + R$39,90/month.
+- Fiscal NFC-e: R$399-699 setup, with API/certificate/accounting paid by the restaurant or transparently passed through.
+- iFood and 99Food: R$299 setup + R$99,90/month each, depending on partner/API availability.
+- WhatsApp Status: R$29,90/month.
+- Agente IA WhatsApp: R$399 setup + R$99,90/month, with Meta costs possibly passed through.
 
 ## Getting Started
 

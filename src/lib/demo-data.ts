@@ -5,16 +5,17 @@ const now = "2026-05-03T11:30:00-03:00";
 export const demoData: SaboreData = {
   organization: {
     id: "org-sabore",
-    name: "Sabore Pizza Demo",
-    planPrice: 69.9,
+    name: "Pizza e Cia",
+    planCode: "essential",
+    planPrice: 59.9,
   },
   unit: {
     id: "unit-ponta-verde",
     organizationId: "org-sabore",
-    name: "Sabore Pizza Ponta Verde",
+    name: "Pizza e Cia Ponta Verde",
     city: "Maceio",
     neighborhood: "Ponta Verde",
-    fiscalEnabled: true,
+    fiscalEnabled: false,
   },
   users: [
     {
@@ -331,7 +332,7 @@ export const demoData: SaboreData = {
           receivedAt: "2026-05-03T10:50:00-03:00",
         },
       ],
-      fiscalStatus: "authorized",
+      fiscalStatus: "disabled",
       whatsappStatus: "not_sent",
     },
   ],

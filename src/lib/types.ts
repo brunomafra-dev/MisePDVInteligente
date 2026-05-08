@@ -1,5 +1,7 @@
 export type Role = "owner" | "manager" | "cashier" | "kitchen" | "stock";
 
+export type PlanCode = "essential" | "operation";
+
 export type SalesChannel = "counter" | "table" | "delivery";
 
 export type OrderStatus =
@@ -33,6 +35,7 @@ export type UnitMeasure = "g" | "kg" | "ml" | "l" | "un";
 export interface Organization {
   id: string;
   name: string;
+  planCode: PlanCode;
   planPrice: number;
 }
 

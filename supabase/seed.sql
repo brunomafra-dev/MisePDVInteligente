@@ -55,17 +55,17 @@ where id = '00000000-0000-4000-8000-000000000101';
 delete from public.organizations
 where id = '00000000-0000-4000-8000-000000000001';
 
-insert into public.organizations (id, name, plan_price)
-values ('00000000-0000-4000-8000-000000000001', 'Sabore Pizza Demo', 69.90);
+insert into public.organizations (id, name, plan_code, plan_price)
+values ('00000000-0000-4000-8000-000000000001', 'Pizza e Cia', 'essential', 59.90);
 
 insert into public.restaurant_units (id, organization_id, name, city, neighborhood, fiscal_enabled)
 values (
   '00000000-0000-4000-8000-000000000101',
   '00000000-0000-4000-8000-000000000001',
-  'Sabore Pizza Ponta Verde',
+  'Pizza e Cia Ponta Verde',
   'Maceio',
   'Ponta Verde',
-  true
+  false
 );
 
 insert into public.user_profiles (id, unit_id, name, role)
@@ -135,7 +135,7 @@ values
 
 insert into public.orders (id, unit_id, code, channel, status, table_id, customer_id, delivery_fee, discount, fiscal_status, whatsapp_status, opened_at)
 values
-  ('00000000-0000-4000-8000-000000000903', '00000000-0000-4000-8000-000000000101', '100', 'counter', 'paid', null, null, 0, 0, 'authorized', 'not_sent', '2026-05-03T10:42:00-03:00');
+  ('00000000-0000-4000-8000-000000000903', '00000000-0000-4000-8000-000000000101', '100', 'counter', 'paid', null, null, 0, 0, 'disabled', 'not_sent', '2026-05-03T10:42:00-03:00');
 
 insert into public.order_items (id, order_id, product_id, quantity, custom_name, unit_price, notes)
 values

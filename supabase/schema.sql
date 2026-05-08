@@ -10,7 +10,8 @@ create type public.inventory_movement_type as enum ('receipt', 'sale', 'producti
 create table public.organizations (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  plan_price numeric(10,2) not null default 69.90,
+  plan_code text not null default 'essential' check (plan_code in ('essential', 'operation')),
+  plan_price numeric(10,2) not null default 59.90,
   created_at timestamptz not null default now()
 );
 

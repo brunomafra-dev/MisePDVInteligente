@@ -56,6 +56,13 @@ import {
   type PizzaSizeId,
 } from "@/lib/pizza-menu";
 import {
+  addonPlans,
+  corePlans,
+  getPlanByCode,
+  hasPlanFeature,
+  type PlanFeature,
+} from "@/lib/commercial-plans";
+import {
   calculateKitchenCounts,
   calculateOrderTotals,
   calculateRecipeCost,
@@ -75,6 +82,7 @@ import type {
   Order,
   OrderStatus,
   PaymentMethod,
+  PlanCode,
   Product,
   RecipeItem,
   Role,
@@ -155,6 +163,7 @@ type IngredientForm = {
 
 type UnitSettingsForm = {
   organizationName: string;
+  planCode: PlanCode;
   planPrice: string;
   unitName: string;
   city: string;
@@ -247,12 +256,13 @@ const navItems: Array<{
   id: View;
   label: string;
   icon: LucideIcon;
+  feature?: PlanFeature;
 }> = [
   { id: "overview", label: "Painel", icon: Store },
   { id: "service", label: "Atendimento", icon: ShoppingCart },
   { id: "tables", label: "Mesas", icon: SmallTableIcon },
-  { id: "delivery", label: "Delivery", icon: Truck },
-  { id: "kitchen", label: "Cozinha", icon: ChefHat },
+  { id: "delivery", label: "Delivery", icon: Truck, feature: "internalDelivery" },
+  { id: "kitchen", label: "Cozinha", icon: ChefHat, feature: "kds" },
   { id: "catalog", label: "Cadastro", icon: PanelsTopLeft },
   { id: "stock", label: "Estoque", icon: PackageCheck },
   { id: "reports", label: "Relatorios", icon: BarChart3 },
@@ -267,7 +277,13 @@ function cloneData<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function canAccessView(role: Role | undefined, view: View) {
+function canAccessView(role: Role | undefined, view: View, planCode: PlanCode) {
+  const navItem = navItems.find((item) => item.id === view);
+
+  if (navItem?.feature && !hasPlanFeature(planCode, navItem.feature)) {
+    return false;
+  }
+
   if (!role || role === "owner" || role === "manager") return true;
 
   const access: Record<Role, View[]> = {
@@ -281,8 +297,8 @@ function canAccessView(role: Role | undefined, view: View) {
   return access[role].includes(view);
 }
 
-function defaultViewForRole(role: Role | undefined): View {
-  if (role === "kitchen") return "kitchen";
+function defaultViewForRole(role: Role | undefined, planCode: PlanCode): View {
+  if (role === "kitchen" && hasPlanFeature(planCode, "kds")) return "kitchen";
   if (role === "stock") return "stock";
 
   return "overview";
@@ -365,7 +381,7 @@ export function SaboreApp({
   onLogout?: () => void;
 }) {
   const [activeView, setActiveView] = useState<View>(() =>
-    defaultViewForRole(currentUser?.role),
+    defaultViewForRole(currentUser?.role, initialData.organization.planCode),
   );
   const [stockDialog, setStockDialog] = useState<StockDialog>(null);
   const [organization, setOrganization] = useState(() =>
@@ -388,7 +404,7 @@ export function SaboreApp({
   );
   const [composer, setComposer] = useState<ComposerState | null>(null);
   const [activity, setActivity] = useState<string[]>([
-    "Sabore iniciado com pizzaria demo em Ponta Verde",
+    "Sabore iniciado com Pizza e Cia em Ponta Verde",
     "Caixa aberto com R$ 150,00 de fundo",
   ]);
   useEffect(() => {
@@ -426,13 +442,17 @@ export function SaboreApp({
       users,
     ],
   );
+  const activePlan = getPlanByCode(organization.planCode);
   const availableNavItems = useMemo(
-    () => navItems.filter((item) => canAccessView(currentUser?.role, item.id)),
-    [currentUser?.role],
+    () =>
+      navItems.filter((item) =>
+        canAccessView(currentUser?.role, item.id, organization.planCode),
+      ),
+    [currentUser?.role, organization.planCode],
   );
-  const visibleView = canAccessView(currentUser?.role, activeView)
+  const visibleView = canAccessView(currentUser?.role, activeView, organization.planCode)
     ? activeView
-    : defaultViewForRole(currentUser?.role);
+    : defaultViewForRole(currentUser?.role, organization.planCode);
   const stockPositions = useMemo(
     () => calculateStockPositions(data.ingredients, lots, new Date(clockIso)),
     [clockIso, data.ingredients, lots],
@@ -517,8 +537,8 @@ export function SaboreApp({
   }
 
   function changeView(view: View) {
-    if (!canAccessView(currentUser?.role, view)) {
-      log("Perfil sem acesso a esta tela");
+    if (!canAccessView(currentUser?.role, view, organization.planCode)) {
+      log("Plano ou perfil sem acesso a esta tela");
       return;
     }
 
@@ -726,6 +746,14 @@ export function SaboreApp({
       return;
     }
 
+    if (
+      composer.channel === "delivery" &&
+      !hasPlanFeature(organization.planCode, "internalDelivery")
+    ) {
+      log("Delivery proprio faz parte do plano Operacao ou modulo adicional");
+      return;
+    }
+
     if (composer.existingOrderId) {
       const existingOrder = orders.find(
         (order) => order.id === composer.existingOrderId,
@@ -737,20 +765,22 @@ export function SaboreApp({
       }
 
       const createdAt = timestamp();
-      const stockMovements = reserveStockForOrder(
-        {
-          ...existingOrder,
-          id: createId(),
-          items: selectedItems,
-        },
-        data.recipe,
-        data.ingredients,
-        createdAt,
-      ).map((movement) => ({
-        ...movement,
-        id: createId(),
-        orderId: existingOrder.id,
-      }));
+      const stockMovements = hasPlanFeature(organization.planCode, "autoStock")
+        ? reserveStockForOrder(
+            {
+              ...existingOrder,
+              id: createId(),
+              items: selectedItems,
+            },
+            data.recipe,
+            data.ingredients,
+            createdAt,
+          ).map((movement) => ({
+            ...movement,
+            id: createId(),
+            orderId: existingOrder.id,
+          }))
+        : [];
 
       setOrders((current) =>
         current.map((order) =>
@@ -793,12 +823,11 @@ export function SaboreApp({
       fiscalStatus: data.unit.fiscalEnabled ? "pending" : "disabled",
       whatsappStatus: composer.channel === "delivery" ? "queued" : "not_sent",
     };
-    const stockMovements = reserveStockForOrder(
-      order,
-      data.recipe,
-      data.ingredients,
-      order.openedAt,
-    ).map((movement) => ({ ...movement, id: createId() }));
+    const stockMovements = hasPlanFeature(organization.planCode, "autoStock")
+      ? reserveStockForOrder(order, data.recipe, data.ingredients, order.openedAt).map(
+          (movement) => ({ ...movement, id: createId() }),
+        )
+      : [];
 
     setOrders((current) => [order, ...current]);
     if (order.channel === "table" && order.tableId) {
@@ -1067,6 +1096,7 @@ export function SaboreApp({
     const nextOrganization = {
       ...data.organization,
       name: form.organizationName.trim(),
+      planCode: form.planCode,
       planPrice,
     };
     const nextUnit = {
@@ -1204,12 +1234,14 @@ export function SaboreApp({
               <div className="flex items-center gap-2">
                 <BrandMark />
                 <div>
-                  <p className="text-sm font-semibold">Sabore</p>
-                  <p className="text-xs text-muted-foreground">PDV inteligente</p>
+                  <p className="text-sm font-semibold">{organization.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Sabore - PDV Inteligente
+                  </p>
                 </div>
               </div>
             </div>
-            <Badge variant="success">{formatCurrency(data.organization.planPrice)}/mes</Badge>
+            <Badge variant="success">Plano - {activePlan.name}</Badge>
           </div>
           <nav className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1">
             {availableNavItems.map((item) => {
@@ -1245,7 +1277,7 @@ export function SaboreApp({
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="info">Piloto local</Badge>
                 <Badge variant="neutral">100% web online</Badge>
-                <Badge variant="warning">Fiscal repassado</Badge>
+                <Badge variant="warning">Recibo nao fiscal no base</Badge>
                 <Badge variant={dataSource?.source === "supabase" ? "success" : "neutral"}>
                   {dataSource?.source === "supabase" ? "Supabase" : "Demo"}
                 </Badge>
@@ -1254,8 +1286,9 @@ export function SaboreApp({
                 Controle completo do pedido ao CMV
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                PDV, mesas, delivery proprio, cozinha, estoque, validade, caixa,
-                NFC-e via API e WhatsApp guiado em uma rotina unica.
+                PDV, mesas, delivery proprio, cozinha, estoque, validade, caixa e
+                recibo nao fiscal. Fiscal, marketplaces e WhatsApp entram como
+                modulos assistidos.
               </p>
               {dataSource?.message && (
                 <p className="mt-2 max-w-3xl text-xs leading-5 text-muted-foreground">
@@ -1276,19 +1309,19 @@ export function SaboreApp({
                 </div>
               )}
               <div className="grid grid-cols-3 gap-2 sm:flex">
-                {canAccessView(currentUser?.role, "service") && (
+                {canAccessView(currentUser?.role, "service", organization.planCode) && (
                   <Button onClick={() => changeView("service")}>
                     <ShoppingCart />
                     Atendimento
                   </Button>
                 )}
-                {canAccessView(currentUser?.role, "tables") && (
+                {canAccessView(currentUser?.role, "tables", organization.planCode) && (
                   <Button variant="secondary" onClick={() => changeView("tables")}>
                     <SmallTableIcon />
                     Mesas
                   </Button>
                 )}
-                {canAccessView(currentUser?.role, "delivery") && (
+                {canAccessView(currentUser?.role, "delivery", organization.planCode) && (
                   <Button variant="outline" onClick={() => changeView("delivery")}>
                     <Truck />
                     Delivery
@@ -2588,6 +2621,8 @@ function CatalogView({
   }
 
   function submitRecipeItem() {
+    if (!hasPlanFeature(data.organization.planCode, "recipes")) return;
+
     onAddRecipeItem(recipeForm);
     setRecipeForm((current) => ({ ...current, quantity: "" }));
   }
@@ -2722,89 +2757,91 @@ function CatalogView({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Ficha tecnica</CardTitle>
-            <CardDescription>Opcional para quem quer baixa automatica por receita.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <label className="grid gap-2 text-sm font-medium">
-              Produto
-              <select
-                className="h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
-                value={recipeForm.productId}
-                onChange={(event) =>
-                  setRecipeForm((current) => ({
-                    ...current,
-                    productId: event.target.value,
-                  }))
-                }
-              >
-                {activeProducts.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="grid gap-3 sm:grid-cols-[1fr_120px] xl:grid-cols-1">
+        {hasPlanFeature(data.organization.planCode, "recipes") && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Ficha tecnica</CardTitle>
+              <CardDescription>Opcional para quem quer baixa automatica por receita.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
               <label className="grid gap-2 text-sm font-medium">
-                Insumo
+                Produto
                 <select
                   className="h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
-                  value={recipeForm.ingredientId}
+                  value={recipeForm.productId}
                   onChange={(event) =>
                     setRecipeForm((current) => ({
                       ...current,
-                      ingredientId: event.target.value,
+                      productId: event.target.value,
                     }))
                   }
                 >
-                  {data.ingredients.map((ingredient) => (
-                    <option key={ingredient.id} value={ingredient.id}>
-                      {ingredient.name} ({ingredient.measure})
+                  {activeProducts.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}
                     </option>
                   ))}
                 </select>
               </label>
-              <TextField
-                label="Qtd."
-                value={recipeForm.quantity}
-                onChange={(quantity) =>
-                  setRecipeForm((current) => ({ ...current, quantity }))
-                }
-                inputMode="decimal"
-              />
-            </div>
-            <Button className="w-full" variant="secondary" onClick={submitRecipeItem}>
-              <FilePenLine />
-              Adicionar insumo
-            </Button>
-            <div className="rounded-md border border-border bg-muted/20 p-3">
-              <p className="text-xs font-medium uppercase text-muted-foreground">
-                Receita atual
-              </p>
-              <div className="mt-2 space-y-2 text-sm">
-                {selectedProductRecipe.map((item) => {
-                  const ingredient = data.ingredients.find(
-                    (candidate) => candidate.id === item.ingredientId,
-                  );
-
-                  return (
-                    <Row
-                      key={item.id}
-                      label={ingredient?.name ?? "Insumo"}
-                      value={`${item.quantity} ${ingredient?.measure ?? ""}`}
-                    />
-                  );
-                })}
-                {selectedProductRecipe.length === 0 && (
-                  <p className="text-muted-foreground">Sem ficha tecnica cadastrada.</p>
-                )}
+              <div className="grid gap-3 sm:grid-cols-[1fr_120px] xl:grid-cols-1">
+                <label className="grid gap-2 text-sm font-medium">
+                  Insumo
+                  <select
+                    className="h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
+                    value={recipeForm.ingredientId}
+                    onChange={(event) =>
+                      setRecipeForm((current) => ({
+                        ...current,
+                        ingredientId: event.target.value,
+                      }))
+                    }
+                  >
+                    {data.ingredients.map((ingredient) => (
+                      <option key={ingredient.id} value={ingredient.id}>
+                        {ingredient.name} ({ingredient.measure})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <TextField
+                  label="Qtd."
+                  value={recipeForm.quantity}
+                  onChange={(quantity) =>
+                    setRecipeForm((current) => ({ ...current, quantity }))
+                  }
+                  inputMode="decimal"
+                />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <Button className="w-full" variant="secondary" onClick={submitRecipeItem}>
+                <FilePenLine />
+                Adicionar insumo
+              </Button>
+              <div className="rounded-md border border-border bg-muted/20 p-3">
+                <p className="text-xs font-medium uppercase text-muted-foreground">
+                  Receita atual
+                </p>
+                <div className="mt-2 space-y-2 text-sm">
+                  {selectedProductRecipe.map((item) => {
+                    const ingredient = data.ingredients.find(
+                      (candidate) => candidate.id === item.ingredientId,
+                    );
+
+                    return (
+                      <Row
+                        key={item.id}
+                        label={ingredient?.name ?? "Insumo"}
+                        value={`${item.quantity} ${ingredient?.measure ?? ""}`}
+                      />
+                    );
+                  })}
+                  {selectedProductRecipe.length === 0 && (
+                    <p className="text-muted-foreground">Sem ficha tecnica cadastrada.</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -2860,6 +2897,7 @@ function AdminView({
 }) {
   const [settingsForm, setSettingsForm] = useState<UnitSettingsForm>({
     organizationName: data.organization.name,
+    planCode: data.organization.planCode,
     planPrice: String(data.organization.planPrice),
     unitName: data.unit.name,
     city: data.unit.city,
@@ -2906,6 +2944,27 @@ function AdminView({
                   setSettingsForm((current) => ({ ...current, planPrice }))
                 }
               />
+              <label className="grid gap-2 text-sm font-medium">
+                Plano
+                <select
+                  className="h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm font-normal outline-none ring-ring transition focus:ring-2"
+                  value={settingsForm.planCode}
+                  onChange={(event) => {
+                    const plan = getPlanByCode(event.target.value);
+                    setSettingsForm((current) => ({
+                      ...current,
+                      planCode: plan.code,
+                      planPrice: String(plan.monthlyPrice),
+                    }));
+                  }}
+                >
+                  {corePlans.map((plan) => (
+                    <option key={plan.code} value={plan.code}>
+                      {plan.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <TextField
                 label="Unidade"
                 value={settingsForm.unitName}
@@ -2937,7 +2996,7 @@ function AdminView({
                     }))
                   }
                 />
-                NFC-e habilitada via provedor
+                Fiscal NFC-e habilitado apos setup
               </label>
             </div>
             <Button disabled={!canManage} onClick={() => onUpdateUnitSettings(settingsForm)}>
@@ -3031,21 +3090,44 @@ function AdminView({
 
       <Card>
         <CardHeader>
-          <CardTitle>Pacotes e modulos</CardTitle>
-          <CardDescription>Base comercial pensada para food trucks e negocios pequenos.</CardDescription>
+          <CardTitle>Planos e modulos</CardTitle>
+          <CardDescription>Estrutura comercial revisada para manter entrada barata.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {[
-              ["PDV base", "Atendimento, mesas, delivery proprio e caixa manual"],
-              ["KDS cozinha", "Fila de preparo como modulo adicional"],
-              ["Estoque e CMV", "Insumos, baixa manual, validade e ficha tecnica"],
-              ["Fiscal/WhatsApp", "NFC-e e mensagens guiadas por custos externos"],
-            ].map(([title, description]) => (
-              <div key={title} className="rounded-lg border border-border bg-muted/20 p-4">
-                <p className="font-medium">{title}</p>
+        <CardContent className="space-y-5">
+          <div className="grid gap-3 md:grid-cols-2">
+            {corePlans.map((plan) => (
+              <div
+                key={plan.name}
+                className={cn(
+                  "rounded-lg border border-border bg-muted/20 p-4",
+                  plan.highlighted && "border-primary/30 bg-primary/5",
+                )}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">{plan.name}</p>
+                  <Badge variant={plan.highlighted ? "success" : "neutral"}>
+                    {plan.price}
+                  </Badge>
+                </div>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {description}
+                  {plan.subtitle}
+                </p>
+                <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                  {plan.includes.slice(0, 4).join(" | ")}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {addonPlans.map((addon) => (
+              <div key={addon.name} className="rounded-lg border border-border bg-background p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium">{addon.name}</p>
+                  <Badge variant="info">{addon.price}</Badge>
+                  {addon.setup ? <Badge variant="neutral">{addon.setup}</Badge> : null}
+                </div>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {addon.description}
                 </p>
               </div>
             ))}
@@ -3122,10 +3204,12 @@ function StockView({
             <Minus />
             Dar baixa
           </Button>
-          <Button variant="secondary" onClick={() => onOpenDialog("lots")}>
-            <PackageCheck />
-            Lotes e validade
-          </Button>
+          {hasPlanFeature(data.organization.planCode, "lots") && (
+            <Button variant="secondary" onClick={() => onOpenDialog("lots")}>
+              <PackageCheck />
+              Lotes e validade
+            </Button>
+          )}
         </div>
       </div>
 
@@ -3454,35 +3538,35 @@ function IntegrationsView({ data, orders }: { data: SaboreData; orders: Order[] 
     <div className="grid gap-5 pt-5 xl:grid-cols-3">
       <IntegrationCard
         icon={ReceiptText}
-        title="Focus NFe"
-        badge="Adapter pronto"
-        description="Endpoint /api/fiscal/nfce valida payload e usa mock ate a credencial fiscal ser configurada."
+        title="Fiscal NFC-e"
+        badge="Setup assistido"
+        description="Fiscal nao entra na mensalidade base. Cliente paga ou recebe repasse da API, certificado e contador."
         lines={[
-          "NFC-e modelo 65",
-          "Referencia unica por pedido",
-          "Cliente paga certificado, CSC e provedor",
+          "Setup fiscal: R$399 a R$699",
+          "Sem mensalidade fiscal Sabore",
+          "Checklist fiscal antes de producao",
         ]}
       />
       <IntegrationCard
         icon={CreditCard}
         title="Mercado Pago"
-        badge="Pix e checkout"
-        description="Endpoint /api/payments/mercado-pago cria cobranca mock ou real com credencial do provedor."
+        badge="Opcional futuro"
+        description="Pagamento online nao entra no plano base. No v1 o restaurante registra Pix, dinheiro, credito e debito manualmente."
         lines={[
           `Ultimo pedido: ${lastOrder ? `#${lastOrder.code}` : "-"}`,
           `Total exemplo: ${totals ? formatCurrency(totals.total) : "-"}`,
-          "Webhook idempotente documentado",
+          "Maquininha segue fora do Sabore no plano base",
         ]}
       />
       <IntegrationCard
         icon={MessageCircle}
         title="WhatsApp"
-        badge="Templates guiados"
-        description="Endpoint /api/whatsapp/send envia template oficial ou enfileira mock."
+        badge="Add-on"
+        description="Status simples e agente IA sao modulos separados para nao inflar o plano Essencial."
         lines={[
-          "Status de pedido no v1",
-          "Promocoes como add-on",
-          "Agente IA vendido separado",
+          "WhatsApp Status: R$29,90/mes",
+          "Agente IA: R$399 setup + R$99,90/mes",
+          "Custos Meta podem ser repassados",
         ]}
       />
     </div>

@@ -16,12 +16,12 @@ import { BrandMark } from "@/components/brand-mark";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/utils";
+import { addonPlans, corePlans } from "@/lib/commercial-plans";
 
 export const metadata: Metadata = {
   title: "Site | Sabore",
   description:
-    "Landing page do Sabore com produto, funcoes, suporte e documentos legais.",
+    "Landing page do Sabore com planos, produto, funcoes, suporte e documentos legais.",
 };
 
 const featureCards = [
@@ -38,7 +38,7 @@ const featureCards = [
   {
     icon: Truck,
     title: "Delivery proprio",
-    text: "Pedido proprio com taxa, cliente, status, checkout guiado e operacao separada do salao.",
+    text: "Pedido proprio dentro do Sabore, com base pronta para site de delivery e taxa configuravel.",
   },
   {
     icon: ChefHat,
@@ -57,13 +57,13 @@ const featureCards = [
   },
   {
     icon: ReceiptText,
-    title: "Fiscal por API",
-    text: "Estrutura pronta para NFC-e com provedor externo, sem travar o caixa manual do v1.",
+    title: "Recibo nao fiscal",
+    text: "Conta e recibo para operacao diaria. NFC-e entra como setup fiscal separado.",
   },
   {
     icon: MessageCircleMore,
     title: "WhatsApp guiado",
-    text: "Status de pedido, comunicacao utilitaria e base pronta para add-ons de automacao depois.",
+    text: "Status de pedido e base para agente IA como add-on, sem inflar o plano de entrada.",
   },
 ];
 
@@ -91,11 +91,11 @@ const functionBands = [
   {
     eyebrow: "Crescimento",
     title: "Base pronta para fiscal, pagamento e WhatsApp sem misturar tudo",
-    text: "As integracoes ja foram pensadas como providers separados. Isso deixa o produto mais escalavel e abre espaco para modulos pagos depois.",
+    text: "Fiscal, marketplaces e WhatsApp foram pensados como modulos separados para proteger a margem e deixar a entrada acessivel.",
     bullets: [
-      "NFC-e por adapter",
-      "Checkout online sem TEF no v1",
-      "WhatsApp e campanhas como extensao comercial",
+      "NFC-e por setup fiscal assistido",
+      "Marketplaces como add-ons pagos",
+      "WhatsApp status e IA como extensoes comerciais",
     ],
   },
 ];
@@ -127,6 +127,12 @@ export default function Home() {
             >
               Termos
             </Link>
+            <a
+              className="hidden rounded-md px-3 py-2 text-sm text-muted-foreground transition hover:bg-white/70 hover:text-foreground lg:inline-flex"
+              href="#planos"
+            >
+              Planos
+            </a>
             <Link href="/">
               <Button>Entrar no app</Button>
             </Link>
@@ -143,7 +149,7 @@ export default function Home() {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="success">SaaS local para Maceio</Badge>
                 <Badge variant="neutral">PDV + cozinha + estoque</Badge>
-                <Badge variant="warning">{formatCurrency(69.9)}/mes por unidade</Badge>
+                <Badge variant="warning">A partir de R$59,90/mes</Badge>
               </div>
               <h1 className="mt-5 max-w-[12ch] text-4xl font-semibold leading-none tracking-tight sm:text-5xl">
                 Mais controle na operacao. Menos perda na cozinha.
@@ -151,7 +157,8 @@ export default function Home() {
               <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
                 O Sabore e um sistema para restaurantes, pizzarias e lanchonetes que
                 precisam vender, produzir, controlar insumo e entender CMV sem cair
-                num software pesado demais para a rotina.
+                num software pesado demais para a rotina. O fiscal, marketplaces e
+                WhatsApp entram como modulos opcionais quando fizer sentido.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link href="/">
@@ -160,6 +167,11 @@ export default function Home() {
                     <ArrowRight />
                   </Button>
                 </Link>
+                <a href="#planos">
+                  <Button variant="outline" className="h-11 px-5 text-sm">
+                    Ver planos
+                  </Button>
+                </a>
                 <a href="#funcoes">
                   <Button variant="outline" className="h-11 px-5 text-sm">
                     Entender funcoes
@@ -235,6 +247,91 @@ export default function Home() {
               </div>
             </section>
           ))}
+        </div>
+      </section>
+
+      <section className="border-y border-border/60 bg-white/72" id="planos">
+        <div className="mx-auto w-full max-w-[1180px] px-5 py-12 sm:px-8">
+          <div className="max-w-3xl">
+            <p className="text-sm font-medium uppercase text-primary">Planos Sabore</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight">
+              Entrada barata, modulos honestos e fiscal sem surpresa
+            </h2>
+            <p className="mt-3 text-base leading-7 text-muted-foreground">
+              O plano base resolve a operacao sem embutir custos caros. Cozinha,
+              estoque automatico, site proprio, fiscal, marketplaces e WhatsApp
+              entram conforme a necessidade do restaurante.
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-4 lg:grid-cols-2">
+            {corePlans.map((plan) => (
+              <Card
+                key={plan.name}
+                className={plan.highlighted ? "h-full border-primary/35 bg-primary/5" : "h-full bg-white/92"}
+              >
+                <CardHeader>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <CardTitle>{plan.name}</CardTitle>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {plan.subtitle}
+                      </p>
+                    </div>
+                    <Badge variant={plan.highlighted ? "success" : "neutral"}>
+                      {plan.price}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ul className="grid gap-2 text-sm leading-6 text-muted-foreground">
+                    {plan.includes.map((item) => (
+                      <li key={item} className="rounded-md border border-border/80 bg-background/70 px-3 py-2">
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                  {plan.note ? (
+                    <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm leading-6 text-amber-950">
+                      {plan.note}
+                    </p>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="mt-8">
+            <h3 className="text-2xl font-semibold tracking-tight">Modulos adicionais</h3>
+            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {addonPlans.map((addon) => (
+                <Card key={addon.name} className="h-full bg-white/92">
+                  <CardHeader>
+                    <CardTitle>{addon.name}</CardTitle>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {addon.setup ? <Badge variant="neutral">{addon.setup}</Badge> : null}
+                      <Badge variant="info">{addon.price}</Badge>
+                    </div>
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      {addon.description}
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2 text-sm leading-6 text-muted-foreground">
+                      {addon.includes.slice(0, 4).map((item) => (
+                        <li key={item}>- {item}</li>
+                      ))}
+                    </ul>
+                    {addon.note ? (
+                      <p className="mt-4 text-xs leading-5 text-muted-foreground">
+                        {addon.note}
+                      </p>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

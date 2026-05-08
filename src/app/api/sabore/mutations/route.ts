@@ -92,6 +92,7 @@ function organizationSettingsRow(
 ) {
   return {
     name: organization.name,
+    plan_code: organization.planCode,
     plan_price: organization.planPrice,
   };
 }

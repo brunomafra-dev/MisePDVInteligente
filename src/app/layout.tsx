@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Sabore | PDV inteligente para restaurantes",
   description:
-    "Sistema SaaS para PDV, cozinha, estoque, CMV, delivery proprio, NFC-e e WhatsApp guiado.",
+    "Sistema SaaS para PDV, cozinha, estoque, CMV, delivery proprio, recibo nao fiscal e modulos opcionais.",
   icons: {
     icon: "/icon.svg",
   },

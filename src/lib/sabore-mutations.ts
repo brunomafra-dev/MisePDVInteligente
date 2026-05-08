@@ -122,6 +122,7 @@ const tableSchema = z.object({
 const organizationSettingsSchema = z.object({
   id: uuidSchema,
   name: textField(160),
+  planCode: z.enum(["essential", "operation"]),
   planPrice: moneyField(10_000),
 });
 
