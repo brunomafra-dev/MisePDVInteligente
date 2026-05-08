@@ -129,6 +129,15 @@ function planCodeValue(row: DbRow): PlanCode {
   return value === "operation" ? "operation" : "essential";
 }
 
+function organizationLogoUrl(row: DbRow) {
+  const logoUrl = optionalString(row, "logo_url");
+
+  if (logoUrl) return logoUrl;
+  if (stringValue(row, "name") === "Pizza e Cia") return "/logos/pizza-e-cia.svg";
+
+  return undefined;
+}
+
 function mapOrder(
   row: DbRow,
   itemsByOrder: Record<string, DbRow[]>,
@@ -218,6 +227,7 @@ function mapSaboreData({
     organization: {
       id: stringValue(organizationRow, "id"),
       name: stringValue(organizationRow, "name"),
+      logoUrl: organizationLogoUrl(organizationRow),
       planCode: planCodeValue(organizationRow),
       planPrice: numberValue(organizationRow, "plan_price", 59.9),
     },
@@ -465,6 +475,7 @@ export async function getSaboreData(): Promise<SaboreDataResult> {
       organization: {
         id: stringValue(organizationRow, "id"),
         name: stringValue(organizationRow, "name"),
+        logoUrl: organizationLogoUrl(organizationRow),
         planCode: planCodeValue(organizationRow),
         planPrice: numberValue(organizationRow, "plan_price", 59.9),
       },

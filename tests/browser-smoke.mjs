@@ -199,7 +199,12 @@ async function verifyMobile(browser) {
 
   const initialAppText = await page.locator("body").innerText();
   const planBadgeUsesName =
-    initialAppText.includes("Plano -") && !initialAppText.includes("Essencial R$");
+    initialAppText.includes("Sabore - PDV Inteligente") &&
+    /(?:Essencial|Operacao)/.test(initialAppText) &&
+    !initialAppText.includes("Plano -") &&
+    !initialAppText.includes("Essencial R$");
+  const establishmentLogoVisible =
+    (await page.locator('img[alt^="Logo "]').count()) > 0;
   const supabaseSourceVisible = (await page.locator("body").innerText()).includes(
     "Supabase",
   );
@@ -347,6 +352,7 @@ async function verifyMobile(browser) {
     adminVisible,
     commercialSettingsReadOnly,
     planBadgeUsesName,
+    establishmentLogoVisible,
     errors,
   };
 }
@@ -389,6 +395,7 @@ if (
   !mobile.adminVisible ||
   !mobile.commercialSettingsReadOnly ||
   !mobile.planBadgeUsesName ||
+  !mobile.establishmentLogoVisible ||
   !mobile.composerClearedOnNavigation
 ) {
   console.error(JSON.stringify({ desktop, mobile }, null, 2));

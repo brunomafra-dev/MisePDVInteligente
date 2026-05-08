@@ -35,6 +35,7 @@ export type UnitMeasure = "g" | "kg" | "ml" | "l" | "un";
 export interface Organization {
   id: string;
   name: string;
+  logoUrl?: string;
   planCode: PlanCode;
   planPrice: number;
 }

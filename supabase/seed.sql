@@ -55,8 +55,14 @@ where id = '00000000-0000-4000-8000-000000000101';
 delete from public.organizations
 where id = '00000000-0000-4000-8000-000000000001';
 
-insert into public.organizations (id, name, plan_code, plan_price)
-values ('00000000-0000-4000-8000-000000000001', 'Pizza e Cia', 'essential', 59.90);
+insert into public.organizations (id, name, logo_url, plan_code, plan_price)
+values (
+  '00000000-0000-4000-8000-000000000001',
+  'Pizza e Cia',
+  '/logos/pizza-e-cia.svg',
+  'essential',
+  59.90
+);
 
 insert into public.restaurant_units (id, organization_id, name, city, neighborhood, fiscal_enabled)
 values (

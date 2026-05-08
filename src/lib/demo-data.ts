@@ -6,6 +6,7 @@ export const demoData: SaboreData = {
   organization: {
     id: "org-sabore",
     name: "Pizza e Cia",
+    logoUrl: "/logos/pizza-e-cia.svg",
     planCode: "essential",
     planPrice: 59.9,
   },

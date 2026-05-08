@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -1245,19 +1246,15 @@ export function SaboreApp({
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col lg:flex-row">
         <aside className="border-b border-border bg-sidebar px-4 py-4 lg:min-h-screen lg:w-64 lg:border-b-0 lg:border-r">
-          <div className="flex items-center justify-between gap-3 lg:block">
-            <div>
-              <div className="flex items-center gap-2">
-                <BrandMark />
-                <div>
-                  <p className="text-sm font-semibold">{organization.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Sabore - PDV Inteligente
-                  </p>
-                </div>
-              </div>
+          <div className="flex items-center gap-3">
+            <EstablishmentMark logoUrl={organization.logoUrl} name={organization.name} />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{organization.name}</p>
+              <p className="text-xs text-muted-foreground">
+                Sabore - PDV Inteligente
+              </p>
+              <p className="text-xs font-medium text-primary">{activePlan.name}</p>
             </div>
-            <Badge variant="success">Plano - {activePlan.name}</Badge>
           </div>
           <nav className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1">
             {availableNavItems.map((item) => {
@@ -1462,6 +1459,34 @@ export function SaboreApp({
       </div>
     </div>
   );
+}
+
+function EstablishmentMark({
+  logoUrl,
+  name,
+}: {
+  logoUrl?: string;
+  name: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (logoUrl && !failed) {
+    return (
+      <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+        <Image
+          src={logoUrl}
+          alt={`Logo ${name}`}
+          width={48}
+          height={48}
+          className="size-full object-cover"
+          unoptimized
+          onError={() => setFailed(true)}
+        />
+      </span>
+    );
+  }
+
+  return <BrandMark className="size-12 shrink-0 rounded-xl" />;
 }
 
 function MetricCard({
