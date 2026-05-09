@@ -27,6 +27,14 @@ export type PlanFeature =
   | "lots"
   | "internalDelivery";
 
+export type CommercialModuleCode =
+  | "delivery_site"
+  | "whatsapp_status"
+  | "fiscal_nfce"
+  | "ifood"
+  | "food99"
+  | "whatsapp_ai";
+
 export type CommercialAddon = {
   name: string;
   price: string;
@@ -188,4 +196,11 @@ export function hasPlanFeature(
   feature: PlanFeature,
 ) {
   return getPlanByCode(planCode).features.includes(feature);
+}
+
+export function hasEnabledModule(
+  enabledModules: string[] | null | undefined,
+  moduleCode: CommercialModuleCode,
+) {
+  return (enabledModules ?? []).includes(moduleCode);
 }

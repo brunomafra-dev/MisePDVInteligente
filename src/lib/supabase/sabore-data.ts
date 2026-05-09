@@ -3,6 +3,7 @@ import { demoData } from "@/lib/demo-data";
 import type {
   CashSession,
   Customer,
+  DeliveryOrderDetail,
   DiningTable,
   Ingredient,
   InventoryLot,
@@ -55,6 +56,14 @@ function booleanValue(row: DbRow, key: string, fallback = false) {
   return typeof value === "boolean" ? value : fallback;
 }
 
+function stringArrayValue(row: DbRow, key: string) {
+  const value = row[key];
+
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
 async function selectRows(
   client: SupabaseClient,
   table: string,
@@ -99,6 +108,22 @@ async function selectRowsIn(
   if (error) {
     throw new Error(`${table}: ${error.message}`);
   }
+
+  return (data ?? []) as unknown as DbRow[];
+}
+
+async function selectOptionalRowsIn(
+  client: SupabaseClient,
+  table: string,
+  column: string,
+  values: string[],
+  select = "*",
+) {
+  if (values.length === 0) return [];
+
+  const { data, error } = await client.from(table).select(select).in(column, values);
+
+  if (error) return [];
 
   return (data ?? []) as unknown as DbRow[];
 }
@@ -187,6 +212,32 @@ function mapOrder(
   };
 }
 
+function mapDeliveryDetail(row: DbRow): DeliveryOrderDetail {
+  const changeFor =
+    row.change_for === null || row.change_for === undefined
+      ? undefined
+      : numberValue(row, "change_for");
+
+  return {
+    id: stringValue(row, "id"),
+    orderId: stringValue(row, "order_id"),
+    fulfillment: stringValue(row, "fulfillment", "delivery") as DeliveryOrderDetail["fulfillment"],
+    phone: stringValue(row, "phone"),
+    cpf: optionalString(row, "cpf"),
+    neighborhood: optionalString(row, "neighborhood"),
+    street: optionalString(row, "street"),
+    number: optionalString(row, "number"),
+    complement: optionalString(row, "complement"),
+    reference: optionalString(row, "reference"),
+    paymentMethod: stringValue(row, "payment_method", "pix") as DeliveryOrderDetail["paymentMethod"],
+    changeFor,
+    whatsappOptIn: booleanValue(row, "whatsapp_opt_in", true),
+    etaMin: numberValue(row, "eta_min", 35),
+    etaMax: numberValue(row, "eta_max", 55),
+    source: stringValue(row, "source", "delivery_site"),
+  };
+}
+
 function mapSaboreData({
   organizationRow,
   unit,
@@ -199,6 +250,7 @@ function mapSaboreData({
   recipeRows,
   orderRows,
   orderItemRows,
+  deliveryDetailRows,
   paymentRows,
   cashRows,
   movementRows,
@@ -215,6 +267,7 @@ function mapSaboreData({
   recipeRows: DbRow[];
   orderRows: DbRow[];
   orderItemRows: DbRow[];
+  deliveryDetailRows: DbRow[];
   paymentRows: DbRow[];
   cashRows: DbRow[];
   movementRows: DbRow[];
@@ -230,6 +283,7 @@ function mapSaboreData({
       logoUrl: organizationLogoUrl(organizationRow),
       planCode: planCodeValue(organizationRow),
       planPrice: numberValue(organizationRow, "plan_price", 59.9),
+      enabledModules: stringArrayValue(organizationRow, "enabled_modules"),
     },
     unit: mapUnit(unit),
     users: userRows.map<UserProfile>((row) => ({
@@ -289,6 +343,7 @@ function mapSaboreData({
       quantity: numberValue(row, "quantity"),
     })),
     orders: orderRows.map((row) => mapOrder(row, itemsByOrder, paymentsByOrder)),
+    deliveryDetails: deliveryDetailRows.map(mapDeliveryDetail),
     cashSession: cashRows[0]
       ? {
           id: stringValue(cashRows[0], "id"),
@@ -375,12 +430,14 @@ export async function getSaboreDataForUnit(unitId: string): Promise<SaboreDataRe
   const ingredientIds = ingredientRows.map((row) => stringValue(row, "id"));
   const productIds = productRows.map((row) => stringValue(row, "id"));
   const orderIds = orderRows.map((row) => stringValue(row, "id"));
-  const [lotRows, recipeRows, orderItemRows, paymentRows] = await Promise.all([
-    selectRowsIn(client, "inventory_lots", "ingredient_id", ingredientIds),
-    selectRowsIn(client, "recipe_items", "product_id", productIds),
-    selectRowsIn(client, "order_items", "order_id", orderIds),
-    selectRowsIn(client, "payments", "order_id", orderIds),
-  ]);
+  const [lotRows, recipeRows, orderItemRows, deliveryDetailRows, paymentRows] =
+    await Promise.all([
+      selectRowsIn(client, "inventory_lots", "ingredient_id", ingredientIds),
+      selectRowsIn(client, "recipe_items", "product_id", productIds),
+      selectRowsIn(client, "order_items", "order_id", orderIds),
+      selectOptionalRowsIn(client, "delivery_order_details", "order_id", orderIds),
+      selectRowsIn(client, "payments", "order_id", orderIds),
+    ]);
 
   return {
     data: mapSaboreData({
@@ -395,6 +452,7 @@ export async function getSaboreDataForUnit(unitId: string): Promise<SaboreDataRe
       recipeRows,
       orderRows,
       orderItemRows,
+      deliveryDetailRows,
       paymentRows,
       cashRows,
       movementRows,
@@ -471,6 +529,12 @@ export async function getSaboreData(): Promise<SaboreDataResult> {
 
     const itemsByOrder = groupBy(orderItemRows, "order_id");
     const paymentsByOrder = groupBy(paymentRows, "order_id");
+    const deliveryDetailRows = await selectOptionalRowsIn(
+      client,
+      "delivery_order_details",
+      "order_id",
+      orderRows.map((row) => stringValue(row, "id")),
+    );
     const data: SaboreData = {
       organization: {
         id: stringValue(organizationRow, "id"),
@@ -478,6 +542,7 @@ export async function getSaboreData(): Promise<SaboreDataResult> {
         logoUrl: organizationLogoUrl(organizationRow),
         planCode: planCodeValue(organizationRow),
         planPrice: numberValue(organizationRow, "plan_price", 59.9),
+        enabledModules: stringArrayValue(organizationRow, "enabled_modules"),
       },
       unit: mapUnit(unit),
       users: userRows.map<UserProfile>((row) => ({
@@ -537,6 +602,7 @@ export async function getSaboreData(): Promise<SaboreDataResult> {
         quantity: numberValue(row, "quantity"),
       })),
       orders: orderRows.map((row) => mapOrder(row, itemsByOrder, paymentsByOrder)),
+      deliveryDetails: deliveryDetailRows.map(mapDeliveryDetail),
       cashSession: cashRows[0]
         ? {
             id: stringValue(cashRows[0], "id"),

@@ -13,6 +13,7 @@ create table public.organizations (
   logo_url text,
   plan_code text not null default 'essential' check (plan_code in ('essential', 'operation')),
   plan_price numeric(10,2) not null default 59.90,
+  enabled_modules text[] not null default '{}',
   created_at timestamptz not null default now()
 );
 
@@ -129,6 +130,26 @@ create table public.payments (
   received_at timestamptz not null default now()
 );
 
+create table public.delivery_order_details (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null unique references public.orders(id) on delete cascade,
+  fulfillment text not null default 'delivery' check (fulfillment in ('delivery', 'pickup')),
+  phone text not null,
+  cpf text,
+  neighborhood text,
+  street text,
+  number text,
+  complement text,
+  reference text,
+  payment_method public.payment_method not null default 'pix',
+  change_for numeric(10,2),
+  whatsapp_opt_in boolean not null default true,
+  eta_min integer not null default 35,
+  eta_max integer not null default 55,
+  source text not null default 'delivery_site',
+  created_at timestamptz not null default now()
+);
+
 create table public.cash_sessions (
   id uuid primary key default gen_random_uuid(),
   unit_id uuid not null references public.restaurant_units(id) on delete cascade,
@@ -193,6 +214,7 @@ alter table public.products enable row level security;
 alter table public.recipe_items enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
+alter table public.delivery_order_details enable row level security;
 alter table public.payments enable row level security;
 alter table public.cash_sessions enable row level security;
 alter table public.inventory_movements enable row level security;
@@ -201,6 +223,7 @@ alter table public.whatsapp_templates enable row level security;
 alter table public.security_rate_limits enable row level security;
 
 create index idx_orders_unit_status on public.orders(unit_id, status);
+create index idx_delivery_order_details_order on public.delivery_order_details(order_id);
 create index idx_inventory_lots_expiry on public.inventory_lots(ingredient_id, expires_at);
 create index idx_movements_unit_created on public.inventory_movements(unit_id, created_at desc);
 create index idx_security_rate_limits_reset on public.security_rate_limits(reset_at);

@@ -38,6 +38,7 @@ export interface Organization {
   logoUrl?: string;
   planCode: PlanCode;
   planPrice: number;
+  enabledModules: string[];
 }
 
 export interface RestaurantUnit {
@@ -142,6 +143,25 @@ export interface Order {
   whatsappStatus: "not_sent" | "queued" | "sent" | "failed";
 }
 
+export interface DeliveryOrderDetail {
+  id: string;
+  orderId: string;
+  fulfillment: "delivery" | "pickup";
+  phone: string;
+  cpf?: string;
+  neighborhood?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  reference?: string;
+  paymentMethod: PaymentMethod;
+  changeFor?: number;
+  whatsappOptIn: boolean;
+  etaMin: number;
+  etaMax: number;
+  source: string;
+}
+
 export interface CashSession {
   id: string;
   unitId: string;
@@ -184,6 +204,7 @@ export interface SaboreData {
   products: Product[];
   recipe: RecipeItem[];
   orders: Order[];
+  deliveryDetails: DeliveryOrderDetail[];
   cashSession: CashSession;
   movements: InventoryMovement[];
   whatsappTemplates: WhatsAppTemplate[];

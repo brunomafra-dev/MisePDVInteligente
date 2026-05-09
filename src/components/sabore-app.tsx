@@ -60,6 +60,7 @@ import {
   addonPlans,
   corePlans,
   getPlanByCode,
+  hasEnabledModule,
   hasPlanFeature,
   type PlanFeature,
 } from "@/lib/commercial-plans";
@@ -81,6 +82,7 @@ import type {
   InventoryLot,
   InventoryMovement,
   Order,
+  Organization,
   OrderStatus,
   PaymentMethod,
   PlanCode,
@@ -382,15 +384,31 @@ function cloneData<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function canAccessView(role: Role | undefined, view: View, planCode: PlanCode) {
+function hasDeliveryAccess(organization: Pick<Organization, "planCode" | "enabledModules">) {
+  return (
+    hasPlanFeature(organization.planCode, "internalDelivery") ||
+    hasEnabledModule(organization.enabledModules, "delivery_site")
+  );
+}
+
+function canAccessView(
+  role: Role | undefined,
+  view: View,
+  organization: Pick<Organization, "planCode" | "enabledModules">,
+) {
   const navItem = navItems.find((item) => item.id === view);
 
   if (navItem?.platformOnly) {
     return false;
   }
 
-  if (navItem?.feature && !hasPlanFeature(planCode, navItem.feature)) {
-    return false;
+  if (navItem?.feature) {
+    const featureEnabled =
+      navItem.feature === "internalDelivery"
+        ? hasDeliveryAccess(organization)
+        : hasPlanFeature(organization.planCode, navItem.feature);
+
+    if (!featureEnabled) return false;
   }
 
   if (!role || role === "owner" || role === "manager") return true;
@@ -555,11 +573,11 @@ export function SaboreApp({
   const availableNavItems = useMemo(
     () =>
       navItems.filter((item) =>
-        canAccessView(currentUser?.role, item.id, organization.planCode),
+        canAccessView(currentUser?.role, item.id, organization),
       ),
-    [currentUser?.role, organization.planCode],
+    [currentUser?.role, organization],
   );
-  const visibleView = canAccessView(currentUser?.role, activeView, organization.planCode)
+  const visibleView = canAccessView(currentUser?.role, activeView, organization)
     ? activeView
     : defaultViewForRole(currentUser?.role, organization.planCode);
   const headerContent = getViewHeader(visibleView);
@@ -647,7 +665,7 @@ export function SaboreApp({
   }
 
   function changeView(view: View) {
-    if (!canAccessView(currentUser?.role, view, organization.planCode)) {
+    if (!canAccessView(currentUser?.role, view, organization)) {
       log("Plano ou perfil sem acesso a esta tela");
       return;
     }
@@ -665,7 +683,7 @@ export function SaboreApp({
       existingOrderId?: string;
     } = {},
   ) {
-    if (channel === "delivery" && !hasPlanFeature(organization.planCode, "internalDelivery")) {
+    if (channel === "delivery" && !hasDeliveryAccess(organization)) {
       log("Delivery proprio faz parte do plano Operacao ou modulo adicional");
       return;
     }
@@ -865,7 +883,7 @@ export function SaboreApp({
 
     if (
       composer.channel === "delivery" &&
-      !hasPlanFeature(organization.planCode, "internalDelivery")
+      !hasDeliveryAccess(organization)
     ) {
       log("Delivery proprio faz parte do plano Operacao ou modulo adicional");
       return;
@@ -994,6 +1012,12 @@ export function SaboreApp({
         orderId,
         status,
       });
+      if (
+        order?.channel === "delivery" &&
+        (status === "preparing" || status === "delivered")
+      ) {
+        void sendWhatsApp(orderId, status);
+      }
     }
   }
 
@@ -1103,20 +1127,28 @@ export function SaboreApp({
     }
   }
 
-  async function sendWhatsApp(orderId: string) {
+  async function sendWhatsApp(orderId: string, statusOverride?: OrderStatus) {
     const order = orders.find((candidate) => candidate.id === orderId);
     if (!order) return;
+    const detail = data.deliveryDetails.find((candidate) => candidate.orderId === orderId);
+    const customer = data.customers.find((candidate) => candidate.id === order.customerId);
+    const recipient = detail?.phone ?? customer?.phone;
+
+    if (!recipient) {
+      log(`Pedido ${order.code} sem WhatsApp do cliente`);
+      return;
+    }
 
     await fetch("/api/whatsapp/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         unitId: order.unitId,
-        to: "+5582999991111",
+        to: recipient.startsWith("+") ? recipient : `+${recipient}`,
         templateName: "pedido_status_delivery",
         parameters: {
           codigo: order.code,
-          status: statusLabel[order.status],
+          status: statusLabel[statusOverride ?? order.status],
         },
       }),
     });
@@ -1431,25 +1463,25 @@ export function SaboreApp({
                 </div>
               )}
               <div className="grid grid-cols-2 gap-2 sm:flex">
-                {canAccessView(currentUser?.role, "service", organization.planCode) && (
+                {canAccessView(currentUser?.role, "service", organization) && (
                   <Button onClick={() => openComposer("counter")}>
                     <Store />
                     Bancada
                   </Button>
                 )}
-                {canAccessView(currentUser?.role, "service", organization.planCode) && (
+                {canAccessView(currentUser?.role, "service", organization) && (
                   <Button variant="secondary" onClick={() => changeView("service")}>
                     <ShoppingCart />
                     Atendimento
                   </Button>
                 )}
-                {canAccessView(currentUser?.role, "tables", organization.planCode) && (
+                {canAccessView(currentUser?.role, "tables", organization) && (
                   <Button variant="outline" onClick={() => changeView("tables")}>
                     <SmallTableIcon />
                     Mesas
                   </Button>
                 )}
-                {canAccessView(currentUser?.role, "delivery", organization.planCode) && (
+                {canAccessView(currentUser?.role, "delivery", organization) && (
                   <Button variant="outline" onClick={() => changeView("delivery")}>
                     <Truck />
                     Delivery
@@ -2659,6 +2691,15 @@ function DeliveryView({
           const customer = data.customers.find(
             (candidate) => candidate.id === order.customerId,
           );
+          const detail = data.deliveryDetails.find(
+            (candidate) => candidate.orderId === order.id,
+          );
+          const address =
+            detail?.fulfillment === "pickup"
+              ? "Retirada no balcao"
+              : [detail?.street, detail?.number, detail?.complement]
+                  .filter(Boolean)
+                  .join(", ");
 
           return (
             <Card key={order.id}>
@@ -2681,6 +2722,19 @@ function DeliveryView({
                   <p className="mt-4 text-sm font-medium">
                     {customer?.name ?? "Cliente delivery"}
                   </p>
+                  <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+                    {customer?.phone || detail?.phone ? (
+                      <span>{detail?.phone ?? customer?.phone}</span>
+                    ) : null}
+                    {address ? <span>{address}</span> : null}
+                    {detail?.reference ? <span>Ref: {detail.reference}</span> : null}
+                    {detail ? (
+                      <span>
+                        {paymentLabel[detail.paymentMethod]} | {detail.etaMin}-
+                        {detail.etaMax} min
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="mt-3 grid gap-2">
                     {order.items.map((item) => (
                       <div

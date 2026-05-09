@@ -368,15 +368,59 @@ async function verifyMobile(browser) {
   };
 }
 
+async function verifyPublicDelivery(browser) {
+  const page = await browser.newPage({
+    viewport: { width: 390, height: 900 },
+    isMobile: true,
+  });
+  const errors = [];
+
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  page.on("pageerror", (error) => errors.push(error.message));
+
+  await page.goto(`${baseUrl}/delivery/pizza-e-cia`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /^Salgados$/ }).click();
+  await page.getByRole("button", { name: /Coxinha de frango R\$/ }).first().click();
+  await page.getByRole("button", { name: /Ver sacola/i }).click();
+  await page.waitForTimeout(200);
+
+  const bodyText = await page.locator("body").innerText();
+  const checkoutVisible =
+    bodyText.includes("Sua sacola") &&
+    bodyText.includes("Dados do pedido") &&
+    bodyText.includes("Entrega") &&
+    bodyText.includes("WhatsApp");
+  const horizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+  );
+  const overlay = await page
+    .locator("[data-nextjs-dialog], .vite-error-overlay, #webpack-dev-server-client-overlay")
+    .count();
+
+  await page.screenshot({ path: ".next/sabore-delivery-mobile.png", fullPage: true });
+  await page.close();
+
+  return {
+    checkoutVisible,
+    horizontalOverflow,
+    overlay,
+    errors,
+  };
+}
+
 await setupSmokeUser();
 
 const browser = await chromium.launch({ headless: true });
 let desktop;
 let mobile;
+let delivery;
 
 try {
   desktop = await verifyDesktop(browser);
   mobile = await verifyMobile(browser);
+  delivery = await verifyPublicDelivery(browser);
 } finally {
   await browser.close();
   await cleanupSmokeData();
@@ -389,8 +433,12 @@ if (
   mobile.textLength === 0 ||
   desktop.overlay > 0 ||
   mobile.overlay > 0 ||
+  delivery.overlay > 0 ||
   desktop.errors.length > 0 ||
   mobile.errors.length > 0 ||
+  delivery.errors.length > 0 ||
+  delivery.horizontalOverflow ||
+  !delivery.checkoutVisible ||
   mobile.horizontalOverflow ||
   !mobile.supabaseSourceVisible ||
   !mobile.pizzaBuilderVisible ||
@@ -410,8 +458,8 @@ if (
   !mobile.establishmentLogoVisible ||
   !mobile.composerClearedOnNavigation
 ) {
-  console.error(JSON.stringify({ desktop, mobile }, null, 2));
+  console.error(JSON.stringify({ desktop, mobile, delivery }, null, 2));
   process.exit(1);
 }
 
-console.log(JSON.stringify({ desktop, mobile }, null, 2));
+console.log(JSON.stringify({ desktop, mobile, delivery }, null, 2));

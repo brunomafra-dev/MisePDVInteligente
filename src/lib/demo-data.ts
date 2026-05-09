@@ -9,6 +9,7 @@ export const demoData: SaboreData = {
     logoUrl: "/logos/pizza-e-cia.svg",
     planCode: "essential",
     planPrice: 59.9,
+    enabledModules: ["delivery_site"],
   },
   unit: {
     id: "unit-ponta-verde",
@@ -325,6 +326,7 @@ export const demoData: SaboreData = {
       whatsappStatus: "not_sent",
     },
   ],
+  deliveryDetails: [],
   cashSession: {
     id: "cash-0503",
     unitId: "unit-ponta-verde",
