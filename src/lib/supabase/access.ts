@@ -84,6 +84,7 @@ export function canPerform(role: Role, mutationType: string) {
       "update_order_status",
       "pay_order",
       "update_whatsapp_status",
+      "update_delivery_item_availability",
       "close_cash",
     ],
     kitchen: ["update_order_status"],

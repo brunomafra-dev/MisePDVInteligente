@@ -13,6 +13,11 @@ import {
   type PizzaDeliverySizeId,
 } from "@/features/delivery-proprio/catalog";
 import {
+  assertDeliveryItemsAvailable,
+  queryMust as must,
+  resolveDeliveryUnit,
+} from "@/features/delivery-proprio/server";
+import {
   parseJsonPayload,
   PayloadError,
   payloadErrorResponse,
@@ -26,9 +31,6 @@ import {
 } from "@/lib/security/sanitize";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
-export const dynamic = "force-dynamic";
-
-const seedUnitId = "00000000-0000-4000-8000-000000000101";
 const technicalProductName = "Item delivery proprio";
 
 const pizzaLineSchema = z.object({
@@ -112,25 +114,7 @@ type PricedLine = {
   note?: string;
 };
 
-async function must<T>(
-  label: string,
-  query: PromiseLike<{ data: T; error: unknown }>,
-) {
-  const { data, error } = await query;
-
-  if (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : typeof error === "object" && error && "message" in error
-          ? String(error.message)
-          : "erro desconhecido";
-
-    throw new Error(`${label}: ${message}`);
-  }
-
-  return data;
-}
+export const dynamic = "force-dynamic";
 
 function responseIssue(message: string, status = 400) {
   return Response.json({ error: "delivery_order_error", message }, { status });
@@ -193,54 +177,6 @@ function buildPricedLine(input: DeliveryOrderInput["items"][number]): PricedLine
     quantity: input.quantity,
     note: input.note,
   };
-}
-
-async function resolveUnit(client: SupabaseClient) {
-  const preferredUnitId = process.env.SABORE_DELIVERY_UNIT_ID ?? seedUnitId;
-  const unitById = await must(
-    "restaurant_units",
-    client
-      .from("restaurant_units")
-      .select("id, organization_id, name")
-      .eq("id", preferredUnitId)
-      .maybeSingle(),
-  );
-
-  if (unitById) return unitById as { id: string; organization_id: string; name: string };
-
-  const organization = await must(
-    "organizations",
-    client
-      .from("organizations")
-      .select("id")
-      .eq("name", deliveryStore.name)
-      .maybeSingle(),
-  );
-
-  if (organization && "id" in organization) {
-    const unit = await must(
-      "restaurant_units",
-      client
-        .from("restaurant_units")
-        .select("id, organization_id, name")
-        .eq("organization_id", String(organization.id))
-        .limit(1)
-        .maybeSingle(),
-    );
-
-    if (unit) return unit as { id: string; organization_id: string; name: string };
-  }
-
-  const fallback = await must(
-    "restaurant_units",
-    client.from("restaurant_units").select("id, organization_id, name").limit(1).maybeSingle(),
-  );
-
-  if (!fallback) {
-    throw new Error("Unidade de delivery nao encontrada");
-  }
-
-  return fallback as { id: string; organization_id: string; name: string };
 }
 
 async function getTechnicalProductId(client: SupabaseClient, unitId: string) {
@@ -446,7 +382,12 @@ export async function POST(request: Request) {
 
   try {
     const client = getSupabaseAdmin();
-    const unit = await resolveUnit(client);
+    const unit = await resolveDeliveryUnit(client);
+    await assertDeliveryItemsAvailable(
+      client,
+      unit.id,
+      parsed.data.items.map((item) => item.itemId),
+    );
     const [customerId, technicalProductId, code] = await Promise.all([
       upsertCustomer(client, unit.id, parsed.data),
       getTechnicalProductId(client, unit.id),
@@ -463,7 +404,7 @@ export async function POST(request: Request) {
         unit_id: unit.id,
         code,
         channel: "delivery",
-        status: "new",
+        status: "pending_confirmation",
         table_id: null,
         customer_id: customerId,
         delivery_fee: deliveryFee,
@@ -501,6 +442,7 @@ export async function POST(request: Request) {
         total,
         etaMin,
         etaMax,
+        status: "pending_confirmation",
         whatsappStatus,
       },
     });

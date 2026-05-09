@@ -142,6 +142,7 @@ export function calculateKitchenCounts(orders: Order[]) {
 
 export function nextOrderStatus(status: OrderStatus): OrderStatus {
   const flow: Record<OrderStatus, OrderStatus> = {
+    pending_confirmation: "new",
     new: "preparing",
     preparing: "ready",
     ready: "delivered",

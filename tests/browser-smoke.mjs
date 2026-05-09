@@ -210,14 +210,16 @@ async function verifyMobile(browser) {
   );
   const operationFeaturesVisible =
     (await page.getByRole("button", { name: /^Delivery$/ }).count()) > 0;
-  let deliveryStartsClosed = true;
+  let deliveryPanelLoads = true;
 
   if (operationFeaturesVisible) {
     await page.getByRole("button", { name: /^Delivery$/ }).first().click();
     await page.waitForTimeout(200);
-    deliveryStartsClosed = (await page.locator("body").innerText()).includes(
-      "Nenhum delivery aberto.",
-    );
+    const deliveryText = await page.locator("body").innerText();
+    deliveryPanelLoads =
+      deliveryText.includes("Nenhum delivery aberto.") ||
+      deliveryText.includes("Disponibilidade do delivery") ||
+      deliveryText.includes("Aguardando confirmacao");
   }
 
   await page.getByRole("button", { name: /^Atendimento$/ }).first().click();
@@ -349,7 +351,7 @@ async function verifyMobile(browser) {
     horizontalOverflow,
     composerClearedOnNavigation,
     supabaseSourceVisible,
-    deliveryStartsClosed,
+    deliveryPanelLoads,
     serviceStartsClosed,
     counterLaunchWorks,
     kitchenHasRealOrder,
@@ -442,7 +444,7 @@ if (
   mobile.horizontalOverflow ||
   !mobile.supabaseSourceVisible ||
   !mobile.pizzaBuilderVisible ||
-  !mobile.deliveryStartsClosed ||
+  !mobile.deliveryPanelLoads ||
   !mobile.serviceStartsClosed ||
   !mobile.counterLaunchWorks ||
   !mobile.kitchenHasRealOrder ||

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Bike,
@@ -73,6 +73,7 @@ type OrderResult = {
   etaMin: number;
   etaMax: number;
   whatsappStatus: string;
+  status: "pending_confirmation" | "new";
 };
 
 const initialCheckout: CheckoutState = {
@@ -138,6 +139,22 @@ export function DeliverySite() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
+  const [availability, setAvailability] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    let active = true;
+
+    fetch("/api/delivery/pizza-e-cia/menu", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((result: { availability?: Record<string, boolean> }) => {
+        if (active) setAvailability(result.availability ?? {});
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const visibleSections = useMemo(() => {
     const trimmedQuery = query.trim();
@@ -168,6 +185,8 @@ export function DeliverySite() {
       : 30;
 
   function addStandardItem(item: DeliveryCatalogItem) {
+    if (availability[item.id] === false) return;
+
     setCart((current) => {
       const existing = current.find((line) => line.itemId === item.id && !line.pizza);
 
@@ -191,6 +210,8 @@ export function DeliverySite() {
   }
 
   function openItem(item: DeliveryCatalogItem) {
+    if (availability[item.id] === false) return;
+
     const sizeId = getPizzaSizeFromItemId(item.id);
 
     if (!sizeId) {
@@ -270,6 +291,9 @@ export function DeliverySite() {
 
   function validateCheckout() {
     if (cart.length === 0) return "Adicione pelo menos um item.";
+    const unavailableLine = cart.find((line) => availability[line.itemId] === false);
+
+    if (unavailableLine) return `${unavailableLine.name} esta indisponivel no momento.`;
     if (subtotal < deliveryStore.minOrder) {
       return `Pedido minimo de ${formatCurrency(deliveryStore.minOrder)}.`;
     }
@@ -367,16 +391,20 @@ export function DeliverySite() {
                 <Check className="size-6" />
               </span>
               <div>
-                <p className="text-sm font-medium text-[#8b2d19]">Pedido confirmado</p>
+                <p className="text-sm font-medium text-[#8b2d19]">Pedido enviado</p>
                 <h1 className="text-2xl font-semibold">#{orderResult.code}</h1>
               </div>
             </div>
             <div className="mt-6 grid gap-3 text-sm">
               <div className="rounded-md border border-[#f0dc90] bg-[#fff9e6] px-4 py-3">
+                Status: <strong>Aguardando confirmacao do restaurante</strong>
+              </div>
+              <div className="rounded-md border border-[#f0dc90] bg-[#fff9e6] px-4 py-3">
                 Total: <strong>{formatCurrency(orderResult.total)}</strong>
               </div>
               <div className="rounded-md border border-[#f0dc90] bg-[#fff9e6] px-4 py-3">
-                Previsao: <strong>{orderResult.etaMin}-{orderResult.etaMax} min</strong>
+                Previsao apos confirmar:{" "}
+                <strong>{orderResult.etaMin}-{orderResult.etaMax} min</strong>
               </div>
               <div className="rounded-md border border-[#f0dc90] bg-[#fff9e6] px-4 py-3">
                 WhatsApp:{" "}
@@ -504,16 +532,28 @@ export function DeliverySite() {
                 {section.items.map((item) => (
                   <button
                     key={item.id}
-                    className="grid grid-cols-[1fr_auto] gap-3 rounded-lg border border-[#f0dc90] bg-white p-4 text-left shadow-[0_18px_44px_-38px_rgba(91,27,18,0.42)] transition active:scale-[0.99]"
+                    className={cn(
+                      "grid grid-cols-[1fr_auto] gap-3 rounded-lg border border-[#f0dc90] bg-white p-4 text-left shadow-[0_18px_44px_-38px_rgba(91,27,18,0.42)] transition active:scale-[0.99]",
+                      availability[item.id] === false && "bg-muted/40 opacity-65",
+                    )}
+                    disabled={availability[item.id] === false}
                     onClick={() => openItem(item)}
                     type="button"
                   >
                     <span className="min-w-0">
                       <span className="flex items-start justify-between gap-2">
                         <span className="font-semibold leading-tight">{item.name}</span>
-                        <span className="shrink-0 text-sm font-semibold text-[#d90416]">
-                          {item.badge ? `${item.badge} ` : ""}
-                          {formatCurrency(item.price)}
+                        <span
+                          className={cn(
+                            "shrink-0 text-sm font-semibold",
+                            availability[item.id] === false
+                              ? "text-[#8f8f8f]"
+                              : "text-[#d90416]",
+                          )}
+                        >
+                          {availability[item.id] === false
+                            ? "Em falta"
+                            : `${item.badge ? `${item.badge} ` : ""}${formatCurrency(item.price)}`}
                         </span>
                       </span>
                       {item.description ? (

@@ -23,6 +23,7 @@ const paymentMethodSchema = z.enum([
 ]);
 
 const orderStatusSchema = z.enum([
+  "pending_confirmation",
   "new",
   "preparing",
   "ready",
@@ -148,6 +149,14 @@ const userProfileSchema = z.object({
   role: roleSchema,
 });
 
+const deliveryAvailabilitySchema = z.object({
+  id: uuidSchema,
+  unitId: uuidSchema,
+  itemId: textField(80),
+  available: z.boolean(),
+  updatedAt: textField(40),
+});
+
 export const saboreMutationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("create_order"),
@@ -175,6 +184,10 @@ export const saboreMutationSchema = z.discriminatedUnion("type", [
     type: z.literal("update_whatsapp_status"),
     orderId: uuidSchema,
     whatsappStatus: z.enum(["not_sent", "queued", "sent", "failed"]),
+  }),
+  z.object({
+    type: z.literal("update_delivery_item_availability"),
+    availability: deliveryAvailabilitySchema,
   }),
   z.object({
     type: z.literal("close_cash"),

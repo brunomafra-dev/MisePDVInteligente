@@ -5,6 +5,7 @@ export type PlanCode = "essential" | "operation";
 export type SalesChannel = "counter" | "table" | "delivery";
 
 export type OrderStatus =
+  | "pending_confirmation"
   | "new"
   | "preparing"
   | "ready"
@@ -39,6 +40,14 @@ export interface Organization {
   planCode: PlanCode;
   planPrice: number;
   enabledModules: string[];
+}
+
+export interface DeliveryCatalogAvailability {
+  id: string;
+  unitId: string;
+  itemId: string;
+  available: boolean;
+  updatedAt: string;
 }
 
 export interface RestaurantUnit {
@@ -205,6 +214,7 @@ export interface SaboreData {
   recipe: RecipeItem[];
   orders: Order[];
   deliveryDetails: DeliveryOrderDetail[];
+  deliveryAvailability: DeliveryCatalogAvailability[];
   cashSession: CashSession;
   movements: InventoryMovement[];
   whatsappTemplates: WhatsAppTemplate[];

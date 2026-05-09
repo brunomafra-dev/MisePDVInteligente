@@ -3,6 +3,7 @@ import { demoData } from "@/lib/demo-data";
 import type {
   CashSession,
   Customer,
+  DeliveryCatalogAvailability,
   DeliveryOrderDetail,
   DiningTable,
   Ingredient,
@@ -90,6 +91,32 @@ async function selectRowsEq(
   if (error) {
     throw new Error(`${table}: ${error.message}`);
   }
+
+  return (data ?? []) as unknown as DbRow[];
+}
+
+async function selectOptionalRows(
+  client: SupabaseClient,
+  table: string,
+  select = "*",
+) {
+  const { data, error } = await client.from(table).select(select);
+
+  if (error) return [];
+
+  return (data ?? []) as unknown as DbRow[];
+}
+
+async function selectOptionalRowsEq(
+  client: SupabaseClient,
+  table: string,
+  column: string,
+  value: string,
+  select = "*",
+) {
+  const { data, error } = await client.from(table).select(select).eq(column, value);
+
+  if (error) return [];
 
   return (data ?? []) as unknown as DbRow[];
 }
@@ -238,6 +265,16 @@ function mapDeliveryDetail(row: DbRow): DeliveryOrderDetail {
   };
 }
 
+function mapDeliveryAvailability(row: DbRow): DeliveryCatalogAvailability {
+  return {
+    id: stringValue(row, "id"),
+    unitId: stringValue(row, "unit_id"),
+    itemId: stringValue(row, "item_id"),
+    available: booleanValue(row, "available", true),
+    updatedAt: stringValue(row, "updated_at"),
+  };
+}
+
 function mapSaboreData({
   organizationRow,
   unit,
@@ -251,6 +288,7 @@ function mapSaboreData({
   orderRows,
   orderItemRows,
   deliveryDetailRows,
+  deliveryAvailabilityRows,
   paymentRows,
   cashRows,
   movementRows,
@@ -268,6 +306,7 @@ function mapSaboreData({
   orderRows: DbRow[];
   orderItemRows: DbRow[];
   deliveryDetailRows: DbRow[];
+  deliveryAvailabilityRows: DbRow[];
   paymentRows: DbRow[];
   cashRows: DbRow[];
   movementRows: DbRow[];
@@ -344,6 +383,7 @@ function mapSaboreData({
     })),
     orders: orderRows.map((row) => mapOrder(row, itemsByOrder, paymentsByOrder)),
     deliveryDetails: deliveryDetailRows.map(mapDeliveryDetail),
+    deliveryAvailability: deliveryAvailabilityRows.map(mapDeliveryAvailability),
     cashSession: cashRows[0]
       ? {
           id: stringValue(cashRows[0], "id"),
@@ -416,6 +456,7 @@ export async function getSaboreDataForUnit(unitId: string): Promise<SaboreDataRe
     cashRows,
     movementRows,
     templateRows,
+    deliveryAvailabilityRows,
   ] = await Promise.all([
     selectRowsEq(client, "user_profiles", "unit_id", unitId),
     selectRowsEq(client, "dining_tables", "unit_id", unitId),
@@ -426,6 +467,7 @@ export async function getSaboreDataForUnit(unitId: string): Promise<SaboreDataRe
     selectRowsEq(client, "cash_sessions", "unit_id", unitId),
     selectRowsEq(client, "inventory_movements", "unit_id", unitId),
     selectRowsEq(client, "whatsapp_templates", "unit_id", unitId),
+    selectOptionalRowsEq(client, "delivery_catalog_availability", "unit_id", unitId),
   ]);
   const ingredientIds = ingredientRows.map((row) => stringValue(row, "id"));
   const productIds = productRows.map((row) => stringValue(row, "id"));
@@ -453,6 +495,7 @@ export async function getSaboreDataForUnit(unitId: string): Promise<SaboreDataRe
       orderRows,
       orderItemRows,
       deliveryDetailRows,
+      deliveryAvailabilityRows,
       paymentRows,
       cashRows,
       movementRows,
@@ -501,6 +544,7 @@ export async function getSaboreData(): Promise<SaboreDataResult> {
       cashRows,
       movementRows,
       templateRows,
+      deliveryAvailabilityRows,
     ] = await Promise.all([
       selectRows(client, "restaurant_units"),
       selectRows(client, "user_profiles"),
@@ -516,6 +560,7 @@ export async function getSaboreData(): Promise<SaboreDataResult> {
       selectRows(client, "cash_sessions"),
       selectRows(client, "inventory_movements"),
       selectRows(client, "whatsapp_templates"),
+      selectOptionalRows(client, "delivery_catalog_availability"),
     ]);
     const unit = unitRows[0];
 
@@ -603,6 +648,7 @@ export async function getSaboreData(): Promise<SaboreDataResult> {
       })),
       orders: orderRows.map((row) => mapOrder(row, itemsByOrder, paymentsByOrder)),
       deliveryDetails: deliveryDetailRows.map(mapDeliveryDetail),
+      deliveryAvailability: deliveryAvailabilityRows.map(mapDeliveryAvailability),
       cashSession: cashRows[0]
         ? {
             id: stringValue(cashRows[0], "id"),

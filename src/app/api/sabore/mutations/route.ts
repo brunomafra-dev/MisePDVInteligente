@@ -12,7 +12,11 @@ import {
   payloadErrorResponse,
 } from "@/lib/security/request";
 import { apiRateLimit, enforceRateLimit } from "@/lib/security/rate-limit";
-import { hasPlanFeature, type PlanFeature } from "@/lib/commercial-plans";
+import {
+  hasEnabledModule,
+  hasPlanFeature,
+  type PlanFeature,
+} from "@/lib/commercial-plans";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -128,6 +132,18 @@ function userProfileRow(
   };
 }
 
+function deliveryAvailabilityRow(
+  availability: Extract<SaboreMutation, { type: "update_delivery_item_availability" }>["availability"],
+) {
+  return {
+    id: availability.id,
+    unit_id: availability.unitId,
+    item_id: availability.itemId,
+    available: availability.available,
+    updated_at: availability.updatedAt,
+  };
+}
+
 async function must<T>(label: string, query: PromiseLike<{ data: T; error: unknown }>) {
   const { data, error } = await query;
 
@@ -224,9 +240,24 @@ async function getCommercialState(client: SupabaseClient, unitId: string) {
   }
 
   const planCode = organizations[0].plan_code === "operation" ? "operation" : "essential";
+  const { data: modulesRow } = await client
+    .from("organizations")
+    .select("enabled_modules")
+    .eq("id", units[0].organization_id)
+    .maybeSingle();
+  const enabledModules =
+    modulesRow &&
+    typeof modulesRow === "object" &&
+    "enabled_modules" in modulesRow &&
+    Array.isArray(modulesRow.enabled_modules)
+      ? modulesRow.enabled_modules.filter(
+          (item): item is string => typeof item === "string",
+        )
+      : [];
 
   return {
     fiscalEnabled: Boolean(units[0].fiscal_enabled),
+    enabledModules,
     planCode,
   };
 }
@@ -238,6 +269,17 @@ function requirePlanFeature(
 ) {
   if (!hasPlanFeature(planCode, feature)) {
     throw new AccessError(message, 403);
+  }
+}
+
+function requireDeliveryAccess(
+  commercialState: { planCode: string; enabledModules: string[] },
+) {
+  if (
+    !hasPlanFeature(commercialState.planCode, "internalDelivery") &&
+    !hasEnabledModule(commercialState.enabledModules, "delivery_site")
+  ) {
+    throw new AccessError("Delivery proprio nao esta liberado neste plano", 403);
   }
 }
 
@@ -279,11 +321,7 @@ async function authorizeMutation(
     case "create_order": {
       ensureUnit(mutation.order.unitId, profile);
       if (mutation.order.channel === "delivery") {
-        requirePlanFeature(
-          commercialState.planCode,
-          "internalDelivery",
-          "Delivery proprio nao esta liberado neste plano",
-        );
+        requireDeliveryAccess(commercialState);
       }
       if (mutation.movements.length > 0) {
         requirePlanFeature(
@@ -319,11 +357,7 @@ async function authorizeMutation(
     case "append_order_items": {
       const order = await assertOrderAccess(client, mutation.orderId, profile);
       if (order.channel === "delivery") {
-        requirePlanFeature(
-          commercialState.planCode,
-          "internalDelivery",
-          "Delivery proprio nao esta liberado neste plano",
-        );
+        requireDeliveryAccess(commercialState);
       }
       if (mutation.movements.length > 0) {
         requirePlanFeature(
@@ -344,18 +378,27 @@ async function authorizeMutation(
       break;
     }
     case "update_order_status": {
-      if (mutation.status === "preparing" || mutation.status === "ready") {
+      const order = await assertOrderAccess(client, mutation.orderId, profile);
+
+      if (
+        order.channel !== "delivery" &&
+        (mutation.status === "preparing" || mutation.status === "ready")
+      ) {
         requirePlanFeature(
           commercialState.planCode,
           "kds",
           "KDS/cozinha nao esta liberado neste plano",
         );
       }
-      await assertOrderAccess(client, mutation.orderId, profile);
       break;
     }
     case "update_whatsapp_status": {
       await assertOrderAccess(client, mutation.orderId, profile);
+      break;
+    }
+    case "update_delivery_item_availability": {
+      ensureUnit(mutation.availability.unitId, profile);
+      requireDeliveryAccess(commercialState);
       break;
     }
     case "pay_order": {
@@ -574,6 +617,16 @@ async function handleMutation(client: SupabaseClient, mutation: SaboreMutation) 
           .from("orders")
           .update({ whatsapp_status: mutation.whatsappStatus })
           .eq("id", mutation.orderId),
+      );
+      break;
+    }
+    case "update_delivery_item_availability": {
+      await must(
+        "delivery_catalog_availability",
+        client.from("delivery_catalog_availability").upsert(
+          deliveryAvailabilityRow(mutation.availability),
+          { onConflict: "unit_id,item_id" },
+        ),
       );
       break;
     }

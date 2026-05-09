@@ -327,6 +327,7 @@ export const demoData: SaboreData = {
     },
   ],
   deliveryDetails: [],
+  deliveryAvailability: [],
   cashSession: {
     id: "cash-0503",
     unitId: "unit-ponta-verde",

@@ -13,6 +13,15 @@ where order_id in (
   where unit_id = '00000000-0000-4000-8000-000000000101'
 );
 
+delete from public.delivery_order_details
+where order_id in (
+  select id from public.orders
+  where unit_id = '00000000-0000-4000-8000-000000000101'
+);
+
+delete from public.delivery_catalog_availability
+where unit_id = '00000000-0000-4000-8000-000000000101';
+
 delete from public.order_items
 where order_id in (
   select id from public.orders

@@ -37,6 +37,7 @@ import type { LucideIcon } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { deliveryCatalogSections } from "@/features/delivery-proprio/catalog";
 import {
   Card,
   CardContent,
@@ -78,6 +79,9 @@ import type { SaboreMutation } from "@/lib/sabore-mutations";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import type {
   CashSession,
+  Customer,
+  DeliveryCatalogAvailability,
+  DeliveryOrderDetail,
   Ingredient,
   InventoryLot,
   InventoryMovement,
@@ -205,6 +209,7 @@ const SmallTableIcon = (({
 )) as LucideIcon;
 
 const statusLabel: Record<OrderStatus, string> = {
+  pending_confirmation: "Aguardando confirmacao",
   new: "Fila",
   preparing: "Em preparo",
   ready: "Pronto",
@@ -435,6 +440,7 @@ function orderStatusVariant(status: OrderStatus) {
   if (status === "paid" || status === "delivered") return "success";
   if (status === "ready") return "info";
   if (status === "preparing") return "warning";
+  if (status === "pending_confirmation") return "warning";
   if (status === "cancelled") return "danger";
 
   return "neutral";
@@ -515,11 +521,20 @@ export function SaboreApp({
     cloneData(initialData.organization),
   );
   const [unit, setUnit] = useState(() => cloneData(initialData.unit));
+  const [customers, setCustomers] = useState<Customer[]>(() =>
+    cloneData(initialData.customers),
+  );
   const [users, setUsers] = useState(() => cloneData(initialData.users));
   const [ingredients, setIngredients] = useState(() =>
     cloneData(initialData.ingredients),
   );
   const [orders, setOrders] = useState(() => cloneData(initialData.orders));
+  const [deliveryDetails, setDeliveryDetails] = useState<DeliveryOrderDetail[]>(
+    () => cloneData(initialData.deliveryDetails),
+  );
+  const [deliveryAvailability, setDeliveryAvailability] = useState<
+    DeliveryCatalogAvailability[]
+  >(() => cloneData(initialData.deliveryAvailability));
   const [lots, setLots] = useState(() => cloneData(initialData.lots));
   const [movements, setMovements] = useState(() => cloneData(initialData.movements));
   const [products, setProducts] = useState(() => cloneData(initialData.products));
@@ -539,14 +554,61 @@ export function SaboreApp({
 
     return () => window.clearInterval(interval);
   }, []);
+  useEffect(() => {
+    if (dataSource?.source !== "supabase" || !accessToken) return;
+
+    let cancelled = false;
+
+    async function refreshOperationalData() {
+      try {
+        const response = await fetch("/api/sabore/data", {
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const result = (await response.json().catch(() => null)) as
+          | { data?: SaboreData }
+          | null;
+
+        if (!response.ok || !result?.data || cancelled) return;
+
+        const next = result.data;
+        setOrganization(cloneData(next.organization));
+        setUnit(cloneData(next.unit));
+        setCustomers(cloneData(next.customers));
+        setUsers(cloneData(next.users));
+        setIngredients(cloneData(next.ingredients));
+        setOrders(cloneData(next.orders));
+        setDeliveryDetails(cloneData(next.deliveryDetails));
+        setDeliveryAvailability(cloneData(next.deliveryAvailability));
+        setLots(cloneData(next.lots));
+        setMovements(cloneData(next.movements));
+        setProducts(cloneData(next.products));
+        setRecipe(cloneData(next.recipe));
+        setTables(cloneData(next.tables));
+        setCashSession(cloneData(next.cashSession));
+      } catch {
+        // Sync is best-effort; the local optimistic state stays usable.
+      }
+    }
+
+    const interval = window.setInterval(refreshOperationalData, 12_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [accessToken, dataSource?.source]);
   const data = useMemo(
     () => ({
       ...initialData,
       organization,
       unit,
+      customers,
       users,
       ingredients,
       orders,
+      deliveryDetails,
+      deliveryAvailability,
       lots,
       movements,
       products,
@@ -556,6 +618,9 @@ export function SaboreApp({
     }),
     [
       cashSession,
+      customers,
+      deliveryAvailability,
+      deliveryDetails,
       ingredients,
       initialData,
       lots,
@@ -990,35 +1055,65 @@ export function SaboreApp({
     });
   }
 
-  function advanceOrder(orderId: string) {
+  function updateOrderStatus(
+    orderId: string,
+    status: OrderStatus,
+    options: { logMessage?: string; whatsappLabel?: string } = {},
+  ) {
     const order = orders.find((candidate) => candidate.id === orderId);
-    const status = order ? nextOrderStatus(order.status) : undefined;
+    if (!order) return;
 
     setOrders((current) =>
       current.map((order) =>
         order.id === orderId
-          ? { ...order, status: nextOrderStatus(order.status) }
+          ? { ...order, status }
           : order,
-        ),
+      ),
     );
+    log(options.logMessage ?? `Pedido ${order.code} mudou para ${statusLabel[status]}`);
+    void persistMutation({
+      type: "update_order_status",
+      orderId,
+      status,
+    });
 
-    if (order) {
-      log(`Pedido ${order.code} mudou para ${statusLabel[nextOrderStatus(order.status)]}`);
+    if (order.channel === "delivery" && options.whatsappLabel) {
+      void sendWhatsApp(orderId, status, options.whatsappLabel);
     }
+  }
 
-    if (status) {
-      void persistMutation({
-        type: "update_order_status",
-        orderId,
-        status,
-      });
-      if (
-        order?.channel === "delivery" &&
-        (status === "preparing" || status === "delivered")
-      ) {
-        void sendWhatsApp(orderId, status);
-      }
-    }
+  function advanceOrder(orderId: string) {
+    const order = orders.find((candidate) => candidate.id === orderId);
+    const status = order ? nextOrderStatus(order.status) : undefined;
+
+    if (!order || !status) return;
+
+    const whatsappLabel =
+      order.channel === "delivery" && status === "delivered"
+        ? "Saiu para entrega"
+        : order.channel === "delivery" && status === "preparing"
+          ? "Em preparo"
+          : undefined;
+
+    updateOrderStatus(orderId, status, { whatsappLabel });
+  }
+
+  function confirmDeliveryOrder(orderId: string) {
+    const order = orders.find((candidate) => candidate.id === orderId);
+
+    updateOrderStatus(orderId, "new", {
+      logMessage: order ? `Delivery ${order.code} confirmado` : undefined,
+      whatsappLabel: "Confirmado",
+    });
+  }
+
+  function cancelOrder(orderId: string) {
+    const order = orders.find((candidate) => candidate.id === orderId);
+
+    updateOrderStatus(orderId, "cancelled", {
+      logMessage: order ? `Pedido ${order.code} cancelado` : undefined,
+      whatsappLabel: "Cancelado",
+    });
   }
 
   function payOrder(orderId: string, method: PaymentMethod) {
@@ -1127,7 +1222,11 @@ export function SaboreApp({
     }
   }
 
-  async function sendWhatsApp(orderId: string, statusOverride?: OrderStatus) {
+  async function sendWhatsApp(
+    orderId: string,
+    statusOverride?: OrderStatus,
+    statusLabelOverride?: string,
+  ) {
     const order = orders.find((candidate) => candidate.id === orderId);
     if (!order) return;
     const detail = data.deliveryDetails.find((candidate) => candidate.orderId === orderId);
@@ -1148,7 +1247,7 @@ export function SaboreApp({
         templateName: "pedido_status_delivery",
         parameters: {
           codigo: order.code,
-          status: statusLabel[statusOverride ?? order.status],
+          status: statusLabelOverride ?? statusLabel[statusOverride ?? order.status],
         },
       }),
     });
@@ -1388,6 +1487,34 @@ export function SaboreApp({
     });
   }
 
+  function toggleDeliveryItemAvailability(itemId: string, available: boolean) {
+    const existing = deliveryAvailability.find(
+      (candidate) => candidate.itemId === itemId,
+    );
+    const availability: DeliveryCatalogAvailability = {
+      id: existing?.id ?? createId(),
+      unitId: data.unit.id,
+      itemId,
+      available,
+      updatedAt: timestamp(),
+    };
+
+    setDeliveryAvailability((current) => {
+      const found = current.some((candidate) => candidate.itemId === itemId);
+
+      return found
+        ? current.map((candidate) =>
+            candidate.itemId === itemId ? availability : candidate,
+          )
+        : [availability, ...current];
+    });
+    log(`${itemId} marcado como ${available ? "disponivel" : "em falta"} no delivery`);
+    void persistMutation({
+      type: "update_delivery_item_availability",
+      availability,
+    });
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col lg:flex-row">
@@ -1558,6 +1685,9 @@ export function SaboreApp({
               data={data}
               onNewDelivery={() => openComposer("delivery")}
               onAdvance={advanceOrder}
+              onConfirm={confirmDeliveryOrder}
+              onCancel={cancelOrder}
+              onToggleAvailability={toggleDeliveryItemAvailability}
               onPay={payOrder}
               onSendWhatsApp={sendWhatsApp}
             />
@@ -2661,6 +2791,9 @@ function DeliveryView({
   data,
   onNewDelivery,
   onAdvance,
+  onConfirm,
+  onCancel,
+  onToggleAvailability,
   onPay,
   onSendWhatsApp,
 }: {
@@ -2668,6 +2801,9 @@ function DeliveryView({
   data: SaboreData;
   onNewDelivery: () => void;
   onAdvance: (orderId: string) => void;
+  onConfirm: (orderId: string) => void;
+  onCancel: (orderId: string) => void;
+  onToggleAvailability: (itemId: string, available: boolean) => void;
   onPay: (orderId: string, method: PaymentMethod) => void;
   onSendWhatsApp: (orderId: string) => void;
 }) {
@@ -2676,9 +2812,39 @@ function DeliveryView({
       order.channel === "delivery" &&
       !["paid", "cancelled"].includes(order.status),
   );
+  const pendingOrders = deliveryOrders.filter(
+    (order) => order.status === "pending_confirmation",
+  );
+  const availabilityByItem = Object.fromEntries(
+    data.deliveryAvailability.map((item) => [item.itemId, item.available]),
+  );
 
   return (
     <div className="space-y-5 pt-5">
+      <div className="grid gap-4 md:grid-cols-3">
+        <MetricCard
+          label="Aguardando confirmacao"
+          value={String(pendingOrders.length)}
+          helper="Pedido do site ainda nao foi aceito pelo restaurante."
+          icon={Clock3}
+          tone={pendingOrders.length > 0 ? "warning" : "neutral"}
+        />
+        <MetricCard
+          label="Delivery aberto"
+          value={String(deliveryOrders.length)}
+          helper="Pedidos publicos e manuais em andamento."
+          icon={Truck}
+        />
+        <MetricCard
+          label="Cardapio publico"
+          value={String(
+            data.deliveryAvailability.filter((item) => item.available === false).length,
+          )}
+          helper="Itens marcados em falta somem da venda do site."
+          icon={ClipboardList}
+        />
+      </div>
+
       <div className="flex justify-end">
         <Button onClick={onNewDelivery}>
           <Plus />
@@ -2750,21 +2916,44 @@ function DeliveryView({
                 <div className="space-y-3">
                   <Row label="Total" value={formatCurrency(totals.total)} strong />
                   <Row label="Falta" value={formatCurrency(totals.remaining)} />
-                  <Button
-                    className="w-full"
-                    size="sm"
-                    variant="secondary"
-                    disabled={order.status === "paid"}
-                    onClick={() => onAdvance(order.id)}
-                  >
-                    <RefreshCw />
-                    Avancar
-                  </Button>
+                  {order.status === "pending_confirmation" ? (
+                    <>
+                      <Button
+                        className="w-full"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => onConfirm(order.id)}
+                      >
+                        <CheckCircle2 />
+                        Confirmar pedido
+                      </Button>
+                      <Button
+                        className="w-full"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onCancel(order.id)}
+                      >
+                        <X />
+                        Cancelar
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      className="w-full"
+                      size="sm"
+                      variant="secondary"
+                      disabled={order.status === "paid"}
+                      onClick={() => onAdvance(order.id)}
+                    >
+                      <RefreshCw />
+                      Avancar
+                    </Button>
+                  )}
                   <Button
                     className="w-full"
                     size="sm"
                     variant="outline"
-                    disabled={totals.remaining <= 0}
+                    disabled={totals.remaining <= 0 || order.status === "pending_confirmation"}
                     onClick={() => onPay(order.id, "pix")}
                   >
                     <CreditCard />
@@ -2792,6 +2981,50 @@ function DeliveryView({
           </CardContent>
         </Card>
       )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Disponibilidade do delivery</CardTitle>
+          <CardDescription>
+            Marque item em falta para o cliente nao conseguir pedir no site.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-5 lg:grid-cols-2">
+          {deliveryCatalogSections.map((section) => (
+            <section key={section.id} className="space-y-3">
+              <div>
+                <p className="font-semibold">{section.label}</p>
+                <p className="text-sm text-muted-foreground">{section.subtitle}</p>
+              </div>
+              <div className="grid gap-2">
+                {section.items.map((item) => {
+                  const available = availabilityByItem[item.id] !== false;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="grid gap-3 rounded-md border border-border bg-muted/15 p-3 sm:grid-cols-[1fr_auto]"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{item.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatCurrency(item.price)}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={available ? "outline" : "secondary"}
+                        onClick={() => onToggleAvailability(item.id, !available)}
+                      >
+                        {available ? "Disponivel" : "Em falta"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }
