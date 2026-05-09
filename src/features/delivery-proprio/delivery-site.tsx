@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
@@ -36,6 +37,18 @@ import {
   type DeliveryCategoryId,
   type PizzaDeliverySizeId,
 } from "./catalog";
+import {
+  accountFromCheckout,
+  accountToCheckoutPatch,
+  addressToCheckoutPatch,
+  readSavedAccount,
+  readSavedOrders,
+  writeSavedAccount,
+  writeSavedOrders,
+  type DeliveryAddress,
+  type SavedDeliveryAccount,
+  type SavedOrderReference,
+} from "./customer-storage";
 
 type CartLine = {
   key: string;
@@ -68,20 +81,6 @@ type CheckoutState = {
 
 type CustomerPreference = "undecided" | "guest" | "save";
 
-type SavedDeliveryProfile = Pick<
-  CheckoutState,
-  | "name"
-  | "phone"
-  | "cpf"
-  | "fulfillment"
-  | "neighborhoodId"
-  | "street"
-  | "number"
-  | "complement"
-  | "reference"
-  | "paymentMethod"
->;
-
 type OrderResult = {
   id: string;
   code: string;
@@ -90,13 +89,6 @@ type OrderResult = {
   etaMax: number;
   whatsappStatus: string;
   status: "pending_confirmation" | "new";
-};
-
-type SavedOrderReference = {
-  id: string;
-  code: string;
-  phone: string;
-  createdAt: string;
 };
 
 type PublicOrderStatus = {
@@ -138,9 +130,6 @@ const paymentLabels: Record<CheckoutState["paymentMethod"], string> = {
   debit: "Debito",
 };
 
-const profileStorageKey = `sabore:${deliveryStore.slug}:delivery-profile:v1`;
-const ordersStorageKey = `sabore:${deliveryStore.slug}:orders:v1`;
-
 function cartQuantity(cart: CartLine[]) {
   return cart.reduce((sum, line) => sum + line.quantity, 0);
 }
@@ -166,73 +155,6 @@ function inputClassName(className?: string) {
   );
 }
 
-function readSavedProfile() {
-  try {
-    if (typeof window === "undefined") return null;
-
-    const rawProfile = window.localStorage.getItem(profileStorageKey);
-    if (!rawProfile) return null;
-
-    const parsed = JSON.parse(rawProfile) as Partial<SavedDeliveryProfile>;
-
-    if (!parsed.name || !parsed.phone) return null;
-
-    return {
-      name: parsed.name,
-      phone: parsed.phone,
-      cpf: parsed.cpf ?? "",
-      fulfillment: parsed.fulfillment === "pickup" ? "pickup" : "delivery",
-      neighborhoodId: parsed.neighborhoodId ?? deliveryZones[0]?.id ?? "",
-      street: parsed.street ?? "",
-      number: parsed.number ?? "",
-      complement: parsed.complement ?? "",
-      reference: parsed.reference ?? "",
-      paymentMethod: parsed.paymentMethod ?? "pix",
-    } satisfies SavedDeliveryProfile;
-  } catch {
-    return null;
-  }
-}
-
-function profileFromCheckout(checkout: CheckoutState): SavedDeliveryProfile {
-  return {
-    name: checkout.name,
-    phone: checkout.phone,
-    cpf: checkout.cpf,
-    fulfillment: checkout.fulfillment,
-    neighborhoodId: checkout.neighborhoodId,
-    street: checkout.street,
-    number: checkout.number,
-    complement: checkout.complement,
-    reference: checkout.reference,
-    paymentMethod: checkout.paymentMethod,
-  };
-}
-
-function readSavedOrders() {
-  try {
-    if (typeof window === "undefined") return [];
-
-    const rawOrders = window.localStorage.getItem(ordersStorageKey);
-    if (!rawOrders) return [];
-
-    const parsed = JSON.parse(rawOrders) as Partial<SavedOrderReference>[];
-
-    return parsed
-      .filter(
-        (order): order is SavedOrderReference =>
-          Boolean(order.id && order.code && order.phone && order.createdAt),
-      )
-      .slice(0, 20);
-  } catch {
-    return [];
-  }
-}
-
-function writeSavedOrders(orders: SavedOrderReference[]) {
-  window.localStorage.setItem(ordersStorageKey, JSON.stringify(orders.slice(0, 20)));
-}
-
 export function DeliverySite() {
   const [activeCategory, setActiveCategory] = useState<DeliveryCategoryId>("pizzas");
   const [query, setQuery] = useState("");
@@ -251,8 +173,8 @@ export function DeliverySite() {
   const [availability, setAvailability] = useState<Record<string, boolean>>({});
   const [customerPreference, setCustomerPreference] =
     useState<CustomerPreference>("undecided");
-  const [savedProfile, setSavedProfile] = useState<SavedDeliveryProfile | null>(() =>
-    readSavedProfile(),
+  const [savedAccount, setSavedAccount] = useState<SavedDeliveryAccount | null>(() =>
+    readSavedAccount(),
   );
   const [savedOrders, setSavedOrders] = useState<SavedOrderReference[]>(() =>
     readSavedOrders(),
@@ -368,10 +290,10 @@ export function DeliverySite() {
     setCheckout((current) => ({ ...current, ...patch }));
   }
 
-  function applyProfile(profile: SavedDeliveryProfile) {
+  function applyAccount(account: SavedDeliveryAccount) {
     setCheckout((current) => ({
       ...current,
-      ...profile,
+      ...accountToCheckoutPatch(account),
     }));
   }
 
@@ -380,9 +302,22 @@ export function DeliverySite() {
     setCheckout(initialCheckout);
   }
 
-  function chooseSaveProfile() {
-    if (savedProfile) applyProfile(savedProfile);
+  function chooseSavedAccount() {
+    if (!savedAccount) {
+      window.location.href = `/delivery/${deliveryStore.slug}/cadastro`;
+      return;
+    }
+
+    applyAccount(savedAccount);
     setCustomerPreference("save");
+  }
+
+  function useSavedAddress(address: DeliveryAddress) {
+    setCustomerPreference("save");
+    setCheckout((current) => ({
+      ...current,
+      ...addressToCheckoutPatch(address),
+    }));
   }
 
   function openMyOrders() {
@@ -563,10 +498,13 @@ export function DeliverySite() {
       }
 
       if (customerPreference === "save") {
-        const nextProfile = profileFromCheckout(checkout);
+        const nextAccount = accountFromCheckout(savedAccount, {
+          ...checkout,
+          fulfillment: "delivery",
+        });
 
-        window.localStorage.setItem(profileStorageKey, JSON.stringify(nextProfile));
-        setSavedProfile(nextProfile);
+        writeSavedAccount(nextAccount);
+        setSavedAccount(nextAccount);
       }
 
       rememberOrder(result.order);
@@ -643,7 +581,11 @@ export function DeliverySite() {
                 variant="outline"
                 onClick={() => {
                   setOrderResult(null);
-                  setCheckout(savedProfile ? { ...initialCheckout, ...savedProfile } : initialCheckout);
+                  setCheckout(
+                    savedAccount
+                      ? { ...initialCheckout, ...accountToCheckoutPatch(savedAccount) }
+                      : initialCheckout,
+                  );
                 }}
               >
                 Fazer outro pedido
@@ -671,14 +613,25 @@ export function DeliverySite() {
         <header className="sticky top-0 z-30 border-b border-[#f0dc90] bg-[#fffdf6]/95 backdrop-blur">
           <div className="bg-[#d90416] px-4 py-2 text-xs font-semibold text-white">
             <div className="flex items-center justify-between gap-3">
-              <span>Delivery proprio {deliveryStore.phoneDisplay}</span>
-              <button
-                className="rounded-md bg-white/15 px-2 py-1 text-[11px] font-semibold"
-                onClick={openMyOrders}
-                type="button"
-              >
-                Meus pedidos
-              </button>
+              <span className="truncate">
+                {savedAccount ? `Oi, ${savedAccount.name.split(" ")[0]}` : "Delivery proprio"}{" "}
+                {deliveryStore.phoneDisplay}
+              </span>
+              <div className="flex shrink-0 items-center gap-2">
+                <Link
+                  className="rounded-md bg-white/15 px-2 py-1 text-[11px] font-semibold"
+                  href={`/delivery/${deliveryStore.slug}/cadastro`}
+                >
+                  Login
+                </Link>
+                <button
+                  className="rounded-md bg-white/15 px-2 py-1 text-[11px] font-semibold"
+                  onClick={openMyOrders}
+                  type="button"
+                >
+                  Meus pedidos
+                </button>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3 px-4 py-4">
@@ -871,6 +824,7 @@ export function DeliverySite() {
           etaMax={etaMax}
           etaMin={etaMin}
           formError={formError}
+          savedAccount={savedAccount}
           selectedZone={selectedZone}
           submitting={submitting}
           subtotal={subtotal}
@@ -880,15 +834,16 @@ export function DeliverySite() {
           onRemove={removeLine}
           onSubmit={submitOrder}
           onUpdateQuantity={updateLineQuantity}
+          onUseSavedAddress={useSavedAddress}
         />
       ) : null}
 
       {customerPreference === "undecided" ? (
         <EntryChoiceSheet
           savedOrderCount={savedOrders.length}
-          savedProfile={savedProfile}
+          savedAccount={savedAccount}
           onChooseGuest={chooseGuest}
-          onChooseSaved={chooseSaveProfile}
+          onChooseSaved={chooseSavedAccount}
           onOpenOrders={openMyOrders}
         />
       ) : null}
@@ -908,13 +863,13 @@ export function DeliverySite() {
 
 function EntryChoiceSheet({
   savedOrderCount,
-  savedProfile,
+  savedAccount,
   onChooseGuest,
   onChooseSaved,
   onOpenOrders,
 }: {
   savedOrderCount: number;
-  savedProfile: SavedDeliveryProfile | null;
+  savedAccount: SavedDeliveryAccount | null;
   onChooseGuest: () => void;
   onChooseSaved: () => void;
   onOpenOrders: () => void;
@@ -938,32 +893,31 @@ function EntryChoiceSheet({
           </div>
 
           <div className="mt-5 grid gap-3">
-            {savedProfile ? (
+            {savedAccount ? (
               <button
                 className="rounded-lg border border-[#0f7f3a] bg-[#e6ffed] p-4 text-left"
                 onClick={onChooseSaved}
                 type="button"
               >
                 <span className="block font-semibold text-[#14532d]">
-                  Continuar como {savedProfile.name}
+                  Continuar como {savedAccount.name}
                 </span>
                 <span className="mt-1 block text-sm text-[#166534]">
                   Usar WhatsApp e endereco salvos neste aparelho.
                 </span>
               </button>
             ) : (
-              <button
+              <Link
                 className="rounded-lg border border-[#0f7f3a] bg-[#e6ffed] p-4 text-left"
-                onClick={onChooseSaved}
-                type="button"
+                href={`/delivery/${deliveryStore.slug}/cadastro`}
               >
                 <span className="block font-semibold text-[#14532d]">
-                  Fazer cadastro rapido
+                  Fazer cadastro
                 </span>
                 <span className="mt-1 block text-sm text-[#166534]">
-                  Salva seus dados neste aparelho depois do primeiro pedido.
+                  Cadastrar dados e enderecos para os proximos pedidos.
                 </span>
-              </button>
+              </Link>
             )}
 
             <button
@@ -1194,6 +1148,7 @@ function CartSheet({
   etaMax,
   etaMin,
   formError,
+  savedAccount,
   selectedZone,
   submitting,
   subtotal,
@@ -1203,6 +1158,7 @@ function CartSheet({
   onRemove,
   onSubmit,
   onUpdateQuantity,
+  onUseSavedAddress,
 }: {
   cart: CartLine[];
   checkout: CheckoutState;
@@ -1210,6 +1166,7 @@ function CartSheet({
   etaMax: number;
   etaMin: number;
   formError: string;
+  savedAccount: SavedDeliveryAccount | null;
   selectedZone?: { label: string; fee: number };
   submitting: boolean;
   subtotal: number;
@@ -1219,7 +1176,16 @@ function CartSheet({
   onRemove: (key: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onUpdateQuantity: (key: string, delta: number) => void;
+  onUseSavedAddress: (address: DeliveryAddress) => void;
 }) {
+  const selectedSavedAddressId =
+    savedAccount?.addresses.find(
+      (address) =>
+        address.neighborhoodId === checkout.neighborhoodId &&
+        address.street.trim().toLowerCase() === checkout.street.trim().toLowerCase() &&
+        address.number.trim().toLowerCase() === checkout.number.trim().toLowerCase(),
+    )?.id ?? "";
+
   return (
     <div className="fixed inset-0 z-40 flex items-end bg-black/45">
       <div className="max-h-[94vh] w-full overflow-hidden rounded-t-lg bg-[#fffdf6] shadow-2xl">
@@ -1355,6 +1321,30 @@ function CartSheet({
                 <MapPin className="size-4 text-[#d90416]" />
                 Entrega
               </div>
+              {savedAccount?.addresses.length ? (
+                <select
+                  className={inputClassName()}
+                  value={selectedSavedAddressId}
+                  onChange={(event) => {
+                    const address = savedAccount.addresses.find(
+                      (candidate) => candidate.id === event.target.value,
+                    );
+
+                    if (address) onUseSavedAddress(address);
+                  }}
+                >
+                  <option value="">Escolher endereco salvo</option>
+                  {savedAccount.addresses.map((address) => {
+                    const zone = getDeliveryZone(address.neighborhoodId);
+
+                    return (
+                      <option key={address.id} value={address.id}>
+                        {address.label} - {zone?.label ?? "Bairro"}
+                      </option>
+                    );
+                  })}
+                </select>
+              ) : null}
               <select
                 className={inputClassName()}
                 value={checkout.neighborhoodId}

@@ -383,6 +383,16 @@ async function verifyPublicDelivery(browser) {
   page.on("pageerror", (error) => errors.push(error.message));
 
   await page.goto(`${baseUrl}/delivery/pizza-e-cia`, { waitUntil: "networkidle" });
+  const cadastroLink = page.getByRole("link", { name: /Fazer cadastro/i });
+  let cadastroRoutes = false;
+
+  if ((await cadastroLink.count()) > 0) {
+    await cadastroLink.first().click();
+    await page.waitForURL(/\/delivery\/pizza-e-cia\/cadastro$/);
+    cadastroRoutes = (await page.locator("body").innerText()).includes("Login e cadastro");
+    await page.goto(`${baseUrl}/delivery/pizza-e-cia`, { waitUntil: "networkidle" });
+  }
+
   const guestButton = page.getByRole("button", { name: /Pedir sem cadastro/i });
 
   if ((await guestButton.count()) > 0) {
@@ -411,6 +421,7 @@ async function verifyPublicDelivery(browser) {
   await page.close();
 
   return {
+    cadastroRoutes,
     checkoutVisible,
     horizontalOverflow,
     overlay,
@@ -446,6 +457,7 @@ if (
   mobile.errors.length > 0 ||
   delivery.errors.length > 0 ||
   delivery.horizontalOverflow ||
+  !delivery.cadastroRoutes ||
   !delivery.checkoutVisible ||
   mobile.horizontalOverflow ||
   !mobile.supabaseSourceVisible ||
