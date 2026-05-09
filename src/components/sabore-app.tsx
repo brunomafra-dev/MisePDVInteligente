@@ -212,7 +212,7 @@ const statusLabel: Record<OrderStatus, string> = {
 };
 
 const channelLabel: Record<SalesChannel, string> = {
-  counter: "Balcao",
+  counter: "Bancada",
   table: "Mesa",
   delivery: "Delivery",
 };
@@ -268,6 +268,112 @@ const navItems: Array<{
   { id: "admin", label: "Admin", icon: Settings },
   { id: "integrations", label: "Integracoes", icon: ReceiptText, platformOnly: true },
 ];
+
+type ViewHeaderContent = {
+  badges: Array<{
+    label: string;
+    variant: "default" | "neutral" | "success" | "warning" | "danger" | "info";
+  }>;
+  title: string;
+  description: string;
+};
+
+function getViewHeader(view: View): ViewHeaderContent {
+  const headers: Record<View, ViewHeaderContent> = {
+    overview: {
+      badges: [
+        { label: "Visao geral", variant: "info" },
+        { label: "Turno atual", variant: "neutral" },
+      ],
+      title: "Painel da operacao",
+      description:
+        "Acompanhe caixa, pedidos abertos, fila da cozinha e alertas de estoque do turno.",
+    },
+    service: {
+      badges: [
+        { label: "Bancada", variant: "info" },
+        { label: "Mesas abertas", variant: "warning" },
+      ],
+      title: "Atendimento e lancamentos",
+      description:
+        "Venda rapido no balcao/bancada e continue comandas de mesas ja abertas.",
+    },
+    tables: {
+      badges: [
+        { label: "Salao", variant: "info" },
+        { label: "Comandas", variant: "neutral" },
+      ],
+      title: "Mesas e comandas",
+      description:
+        "Abra mesas, adicione itens em consumo ou use lancamento de bancada quando o cliente compra direto.",
+    },
+    delivery: {
+      badges: [
+        { label: "Delivery proprio", variant: "info" },
+        { label: "Pedido online", variant: "neutral" },
+      ],
+      title: "Delivery",
+      description:
+        "Pedidos de entrega ficam separados da operacao de mesas e baixam no fluxo certo.",
+    },
+    kitchen: {
+      badges: [
+        { label: "KDS", variant: "warning" },
+        { label: "Tempo real", variant: "neutral" },
+      ],
+      title: "Cozinha",
+      description:
+        "Priorize fila, preparo e pedidos prontos sem misturar com caixa ou cadastro.",
+    },
+    catalog: {
+      badges: [
+        { label: "Cadastro", variant: "info" },
+        { label: "Cardapio", variant: "neutral" },
+      ],
+      title: "Cadastro operacional",
+      description:
+        "Cadastre itens do cardapio, insumos, mesas e ficha tecnica quando o plano liberar.",
+    },
+    stock: {
+      badges: [
+        { label: "Estoque manual", variant: "info" },
+        { label: "Validade", variant: "warning" },
+      ],
+      title: "Estoque",
+      description:
+        "Receba insumos, registre baixas, perdas e acompanhe posicao de estoque.",
+    },
+    reports: {
+      badges: [
+        { label: "Relatorios", variant: "info" },
+        { label: "Caixa", variant: "neutral" },
+      ],
+      title: "Relatorios do turno",
+      description:
+        "Veja vendas, caixa e indicadores operacionais disponiveis para o plano atual.",
+    },
+    admin: {
+      badges: [
+        { label: "Admin", variant: "info" },
+        { label: "Acessos", variant: "neutral" },
+      ],
+      title: "Configuracoes da unidade",
+      description:
+        "Atualize dados operacionais e usuarios. Plano, fiscal e modulos sao controles comerciais internos.",
+    },
+    integrations: {
+      badges: [
+        { label: "Interno", variant: "neutral" },
+        { label: "Add-ons", variant: "info" },
+      ],
+      title: "Integracoes assistidas",
+      description:
+        "Area interna para modulos fiscais, marketplaces e WhatsApp quando contratados.",
+    },
+  };
+
+  return headers[view];
+}
 
 const emptyComposerItems: ComposerState["items"] = {};
 const emptyComposerNotes: ComposerState["notes"] = {};
@@ -456,6 +562,7 @@ export function SaboreApp({
   const visibleView = canAccessView(currentUser?.role, activeView, organization.planCode)
     ? activeView
     : defaultViewForRole(currentUser?.role, organization.planCode);
+  const headerContent = getViewHeader(visibleView);
   const stockPositions = useMemo(
     () => calculateStockPositions(data.ingredients, lots, new Date(clockIso)),
     [clockIso, data.ingredients, lots],
@@ -566,6 +673,8 @@ export function SaboreApp({
     setActiveView(
       channel === "delivery"
         ? "delivery"
+        : channel === "counter"
+          ? "service"
         : options.existingOrderId
           ? "service"
           : "tables",
@@ -800,8 +909,13 @@ export function SaboreApp({
       setMovements((current) => [...stockMovements, ...current]);
       setLots((current) => deductLotsByMovements(current, stockMovements));
       setComposer(null);
+      const targetLabel =
+        existingOrder.channel === "counter"
+          ? `bancada do pedido ${existingOrder.code}`
+          : data.tables.find((table) => table.id === existingOrder.tableId)?.label ??
+            `mesa do pedido ${existingOrder.code}`;
       log(
-        `${selectedItems.length} item(ns) lancados na ${data.tables.find((table) => table.id === existingOrder.tableId)?.label ?? `mesa do pedido ${existingOrder.code}`}`,
+        `${selectedItems.length} item(ns) lancados na ${targetLabel}`,
       );
       void persistMutation({
         type: "append_order_items",
@@ -1288,26 +1402,21 @@ export function SaboreApp({
           <header className="flex flex-col gap-4 border-b border-border pb-5 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="info">Piloto local</Badge>
-                <Badge variant="neutral">100% web online</Badge>
-                <Badge variant="warning">Recibo nao fiscal no base</Badge>
+                {headerContent.badges.map((badge) => (
+                  <Badge key={badge.label} variant={badge.variant}>
+                    {badge.label}
+                  </Badge>
+                ))}
                 <Badge variant={dataSource?.source === "supabase" ? "success" : "neutral"}>
                   {dataSource?.source === "supabase" ? "Supabase" : "Demo"}
                 </Badge>
               </div>
               <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">
-                Controle completo do pedido ao CMV
+                {headerContent.title}
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                PDV, mesas, delivery proprio, cozinha, estoque, validade, caixa e
-                recibo nao fiscal. Fiscal, marketplaces e WhatsApp entram como
-                modulos assistidos.
+                {headerContent.description}
               </p>
-              {dataSource?.message && (
-                <p className="mt-2 max-w-3xl text-xs leading-5 text-muted-foreground">
-                  {dataSource.message}
-                </p>
-              )}
             </div>
             <div className="space-y-3 xl:text-right">
               {currentUser && (
@@ -1321,15 +1430,21 @@ export function SaboreApp({
                   )}
                 </div>
               )}
-              <div className="grid grid-cols-3 gap-2 sm:flex">
+              <div className="grid grid-cols-2 gap-2 sm:flex">
                 {canAccessView(currentUser?.role, "service", organization.planCode) && (
-                  <Button onClick={() => changeView("service")}>
+                  <Button onClick={() => openComposer("counter")}>
+                    <Store />
+                    Bancada
+                  </Button>
+                )}
+                {canAccessView(currentUser?.role, "service", organization.planCode) && (
+                  <Button variant="secondary" onClick={() => changeView("service")}>
                     <ShoppingCart />
                     Atendimento
                   </Button>
                 )}
                 {canAccessView(currentUser?.role, "tables", organization.planCode) && (
-                  <Button variant="secondary" onClick={() => changeView("tables")}>
+                  <Button variant="outline" onClick={() => changeView("tables")}>
                     <SmallTableIcon />
                     Mesas
                   </Button>
@@ -1379,8 +1494,9 @@ export function SaboreApp({
             <ServiceView
               orders={orders}
               data={data}
+              onNewCounter={() => openComposer("counter")}
               onAddItems={(order) =>
-                openComposer("table", {
+                openComposer(order.channel, {
                   existingOrderId: order.id,
                   tableId: order.tableId,
                 })
@@ -1393,6 +1509,7 @@ export function SaboreApp({
             <TablesView
               orders={orders}
               data={data}
+              onNewCounter={() => openComposer("counter")}
               onOpenTable={(tableId) => openComposer("table", { tableId })}
               onAddItems={(order) =>
                 openComposer("table", {
@@ -2172,132 +2289,228 @@ function TextField({
 function ServiceView({
   orders,
   data,
+  onNewCounter,
   onAddItems,
   onGenerateBill,
   onFinalize,
 }: {
   orders: Order[];
   data: SaboreData;
+  onNewCounter: () => void;
   onAddItems: (order: Order) => void;
   onGenerateBill: (orderId: string) => void;
   onFinalize: (orderId: string) => void;
 }) {
+  const counterOrders = orders.filter(
+    (order) =>
+      order.channel === "counter" &&
+      !["paid", "cancelled"].includes(order.status),
+  );
   const tableOrders = orders.filter(
     (order) =>
       order.channel === "table" &&
       !["paid", "cancelled"].includes(order.status),
   );
+  const serviceOrders = [...counterOrders, ...tableOrders];
 
   return (
     <div className="space-y-5 pt-5">
       <div className="grid gap-4 md:grid-cols-3">
         <MetricCard
-          label="Mesas em consumo"
-          value={String(tableOrders.length)}
-          helper="Mesas abertas aguardando itens, preparo ou fechamento."
-          icon={SmallTableIcon}
+          label="Bancada aberta"
+          value={String(counterOrders.length)}
+          helper="Vendas rapidas sem mesa para salgado, fatia, bebida ou retirada."
+          icon={Store}
         />
         <MetricCard
-          label="Ticket em atendimento"
+          label="Mesas em consumo"
+          value={String(tableOrders.length)}
+          helper="Comandas abertas aguardando mais itens ou fechamento."
+          icon={SmallTableIcon}
+          tone="warning"
+        />
+        <MetricCard
+          label="Total em atendimento"
           value={formatCurrency(
-            tableOrders.reduce(
+            serviceOrders.reduce(
               (sum, order) =>
                 sum + calculateOrderTotals(order, data.products).total,
               0,
             ),
           )}
-          helper="Total ainda aberto nas mesas."
+          helper="Bancada e mesas ainda abertas."
           icon={CircleDollarSign}
           tone="success"
         />
-        <MetricCard
-          label="Tempo medio"
-          value={formatDuration(
-            tableOrders.length
-              ? Math.round(
-                  tableOrders.reduce(
-                    (sum, order) => sum + minutesSince(order.openedAt),
-                    0,
-                  ) / tableOrders.length,
-                )
-              : 0,
-          )}
-          helper="Tempo medio das mesas abertas."
-          icon={Timer}
-          tone="warning"
-        />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        {tableOrders.map((order) => {
-          const table = data.tables.find((candidate) => candidate.id === order.tableId);
-          const totals = calculateOrderTotals(order, data.products);
+      <Card>
+        <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-semibold">Lancamento de bancada</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Para cliente que compra no balcao e ja leva: salgado, bebida, fatia ou pizza pronta.
+            </p>
+          </div>
+          <Button onClick={onNewCounter}>
+            <Store />
+            Novo lancamento
+          </Button>
+        </CardContent>
+      </Card>
 
-          return (
-            <Card key={order.id}>
-              <CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_240px]">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="warning">{table?.label ?? "Mesa"}</Badge>
-                    <Badge variant="info">#{order.code}</Badge>
-                    <Badge variant={orderStatusVariant(order.status)}>
-                      {statusLabel[order.status]}
-                    </Badge>
-                    <Badge variant="neutral">
-                      <Clock3 className="mr-1 size-3" />
-                      {formatDuration(minutesSince(order.openedAt))}
-                    </Badge>
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-semibold">Bancada / balcao</h2>
+          <Badge variant="neutral">{counterOrders.length} aberto(s)</Badge>
+        </div>
+        <div className="grid gap-4 xl:grid-cols-2">
+          {counterOrders.map((order) => {
+            const totals = calculateOrderTotals(order, data.products);
+
+            return (
+              <Card key={order.id}>
+                <CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_240px]">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="info">Bancada</Badge>
+                      <Badge variant="info">#{order.code}</Badge>
+                      <Badge variant={orderStatusVariant(order.status)}>
+                        {statusLabel[order.status]}
+                      </Badge>
+                      <Badge variant="neutral">
+                        <Clock3 className="mr-1 size-3" />
+                        {formatDuration(minutesSince(order.openedAt))}
+                      </Badge>
+                    </div>
+                    <div className="mt-4 grid gap-2">
+                      {order.items.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between rounded-md border border-border bg-muted/20 px-3 py-2 text-sm"
+                        >
+                          <span>{getItemLabel(item, data.products)}</span>
+                          <span className="text-muted-foreground">{item.notes}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="mt-4 grid gap-2">
-                    {order.items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between rounded-md border border-border bg-muted/20 px-3 py-2 text-sm"
-                      >
-                        <span>{getItemLabel(item, data.products)}</span>
-                        <span className="text-muted-foreground">{item.notes}</span>
-                      </div>
-                    ))}
+                  <div className="space-y-3">
+                    <Row label="Total" value={formatCurrency(totals.total)} strong />
+                    <Row label="Falta" value={formatCurrency(totals.remaining)} />
+                    <Button className="w-full" size="sm" onClick={() => onAddItems(order)}>
+                      <Plus />
+                      Adicionar itens
+                    </Button>
+                    <Button
+                      className="w-full"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onGenerateBill(order.id)}
+                    >
+                      <ReceiptText />
+                      Gerar recibo
+                    </Button>
+                    <Button
+                      className="w-full"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => onFinalize(order.id)}
+                    >
+                      <WalletCards />
+                      Finalizar venda
+                    </Button>
                   </div>
-                </div>
-                <div className="space-y-3">
-                  <Row label="Total" value={formatCurrency(totals.total)} strong />
-                  <Row label="Falta" value={formatCurrency(totals.remaining)} />
-                  <Button className="w-full" size="sm" onClick={() => onAddItems(order)}>
-                    <Plus />
-                    Lancar itens
-                  </Button>
-                  <Button
-                    className="w-full"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onGenerateBill(order.id)}
-                  >
-                    <ReceiptText />
-                    Gerar conta
-                  </Button>
-                  <Button
-                    className="w-full"
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => onFinalize(order.id)}
-                  >
-                    <WalletCards />
-                    Finalizar mesa
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-      {tableOrders.length === 0 && (
-        <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">
-            Nenhuma mesa em atendimento. Abra uma mesa na tela Mesas.
-          </CardContent>
-        </Card>
-      )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+        {counterOrders.length === 0 && (
+          <Card>
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              Nenhum lancamento de bancada aberto.
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-semibold">Mesas em atendimento</h2>
+          <Badge variant="neutral">{tableOrders.length} aberta(s)</Badge>
+        </div>
+        <div className="grid gap-4 xl:grid-cols-2">
+          {tableOrders.map((order) => {
+            const table = data.tables.find((candidate) => candidate.id === order.tableId);
+            const totals = calculateOrderTotals(order, data.products);
+
+            return (
+              <Card key={order.id}>
+                <CardContent className="grid gap-5 p-5 lg:grid-cols-[1fr_240px]">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="warning">{table?.label ?? "Mesa"}</Badge>
+                      <Badge variant="info">#{order.code}</Badge>
+                      <Badge variant={orderStatusVariant(order.status)}>
+                        {statusLabel[order.status]}
+                      </Badge>
+                      <Badge variant="neutral">
+                        <Clock3 className="mr-1 size-3" />
+                        {formatDuration(minutesSince(order.openedAt))}
+                      </Badge>
+                    </div>
+                    <div className="mt-4 grid gap-2">
+                      {order.items.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between rounded-md border border-border bg-muted/20 px-3 py-2 text-sm"
+                        >
+                          <span>{getItemLabel(item, data.products)}</span>
+                          <span className="text-muted-foreground">{item.notes}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <Row label="Total" value={formatCurrency(totals.total)} strong />
+                    <Row label="Falta" value={formatCurrency(totals.remaining)} />
+                    <Button className="w-full" size="sm" onClick={() => onAddItems(order)}>
+                      <Plus />
+                      Lancar itens
+                    </Button>
+                    <Button
+                      className="w-full"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onGenerateBill(order.id)}
+                    >
+                      <ReceiptText />
+                      Gerar conta
+                    </Button>
+                    <Button
+                      className="w-full"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => onFinalize(order.id)}
+                    >
+                      <WalletCards />
+                      Finalizar mesa
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+        {tableOrders.length === 0 && (
+          <Card>
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              Nenhuma mesa em atendimento. Abra uma mesa na tela Mesas.
+            </CardContent>
+          </Card>
+        )}
+      </section>
     </div>
   );
 }
@@ -2305,12 +2518,14 @@ function ServiceView({
 function TablesView({
   orders,
   data,
+  onNewCounter,
   onOpenTable,
   onAddItems,
   onFinalize,
 }: {
   orders: Order[];
   data: SaboreData;
+  onNewCounter: () => void;
   onOpenTable: (tableId: string) => void;
   onAddItems: (order: Order) => void;
   onFinalize: (orderId: string) => void;
@@ -2323,6 +2538,20 @@ function TablesView({
 
   return (
     <div className="space-y-5 pt-5">
+      <Card>
+        <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-semibold">Venda sem mesa</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Use bancada para cliente que comprou no balcao e nao vai ocupar mesa.
+            </p>
+          </div>
+          <Button onClick={onNewCounter}>
+            <Store />
+            Lancamento de bancada
+          </Button>
+        </CardContent>
+      </Card>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {data.tables.map((table) => {
           const activeOrder = activeTableOrders.find(

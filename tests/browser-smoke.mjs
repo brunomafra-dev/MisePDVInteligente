@@ -41,7 +41,7 @@ async function cleanupSmokeData() {
     .from("orders")
     .select("id, code")
     .gte("opened_at", smokeStartedAt)
-    .eq("channel", "table");
+    .in("channel", ["table", "counter"]);
   const candidateIds = (candidateOrders ?? []).map((order) => order.id);
 
   if (candidateIds.length === 0) return;
@@ -226,6 +226,16 @@ async function verifyMobile(browser) {
     "Nenhuma mesa em atendimento.",
   );
 
+  await page.getByRole("button", { name: /^Bancada$/ }).first().click();
+  await page.getByRole("button", { name: /^Adicionar pizza$/ }).click();
+  await page.getByRole("button", { name: /^Abrir pedido$/ }).click();
+  await page.waitForTimeout(300);
+  const counterLaunchWorks = (await page.locator("body").innerText()).includes(
+    "Bancada / balcao",
+  );
+  await page.getByRole("button", { name: /^Finalizar venda$/ }).first().click();
+  await page.waitForTimeout(500);
+
   await page.getByRole("button", { name: /^Mesas$/ }).first().click();
   await page.getByRole("button", { name: /^Abrir mesa$/ }).first().click();
   await page.waitForTimeout(300);
@@ -341,6 +351,7 @@ async function verifyMobile(browser) {
     supabaseSourceVisible,
     deliveryStartsClosed,
     serviceStartsClosed,
+    counterLaunchWorks,
     kitchenHasRealOrder,
     serviceHasRealTable,
     serviceClosedAfterReload,
@@ -385,6 +396,7 @@ if (
   !mobile.pizzaBuilderVisible ||
   !mobile.deliveryStartsClosed ||
   !mobile.serviceStartsClosed ||
+  !mobile.counterLaunchWorks ||
   !mobile.kitchenHasRealOrder ||
   !mobile.serviceHasRealTable ||
   !mobile.serviceClosedAfterReload ||
