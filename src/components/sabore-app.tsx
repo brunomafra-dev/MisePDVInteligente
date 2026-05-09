@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -184,6 +184,14 @@ type UserForm = {
 
 type StockDialog = "movement" | "lots" | null;
 
+type DeliveryOrderAlert = {
+  orderId: string;
+  code: string;
+  customerName: string;
+  total: number;
+  openedAt: string;
+};
+
 const SmallTableIcon = (({
   className,
   ...props
@@ -234,7 +242,7 @@ const paymentLabel: Record<PaymentMethod, string> = {
 };
 
 const roleLabel: Record<Role, string> = {
-  owner: "Dono",
+  owner: "Dono/Admin",
   manager: "Gerente",
   cashier: "Caixa",
   kitchen: "Cozinha",
@@ -396,6 +404,10 @@ function hasDeliveryAccess(organization: Pick<Organization, "planCode" | "enable
   );
 }
 
+function canHandleDelivery(role: Role | undefined) {
+  return !role || role === "owner" || role === "manager" || role === "cashier";
+}
+
 function canAccessView(
   role: Role | undefined,
   view: View,
@@ -474,6 +486,40 @@ function formatDuration(minutes: number) {
   return rest > 0 ? `${hours}h ${rest}m` : `${hours}h`;
 }
 
+function playDeliveryNotificationSound() {
+  try {
+    type AudioWindow = Window &
+      typeof globalThis & {
+        webkitAudioContext?: typeof AudioContext;
+      };
+    const AudioContextCtor =
+      window.AudioContext ?? (window as AudioWindow).webkitAudioContext;
+
+    if (!AudioContextCtor) return;
+
+    const audioContext = new AudioContextCtor();
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const startsAt = audioContext.currentTime;
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(880, startsAt);
+    oscillator.frequency.setValueAtTime(660, startsAt + 0.13);
+    gain.gain.setValueAtTime(0.0001, startsAt);
+    gain.gain.exponentialRampToValueAtTime(0.08, startsAt + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startsAt + 0.42);
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(startsAt);
+    oscillator.stop(startsAt + 0.45);
+    oscillator.addEventListener("ended", () => {
+      void audioContext.close();
+    });
+  } catch {
+    // Browsers can block audio until the first user interaction.
+  }
+}
+
 function deductLotsByMovements(
   lots: InventoryLot[],
   movements: InventoryMovement[],
@@ -545,6 +591,19 @@ export function SaboreApp({
     cloneData(initialData.cashSession),
   );
   const [composer, setComposer] = useState<ComposerState | null>(null);
+  const [deliveryAlert, setDeliveryAlertState] = useState<DeliveryOrderAlert | null>(null);
+  const deliveryAlertRef = useRef<DeliveryOrderAlert | null>(null);
+  const knownDeliveryOrderIdsRef = useRef<Set<string>>(
+    new Set(
+      initialData.orders
+        .filter(
+          (order) =>
+            order.channel === "delivery" &&
+            !["paid", "cancelled"].includes(order.status),
+        )
+        .map((order) => order.id),
+    ),
+  );
   const [activity, setActivity] = useState<string[]>([
     "Sabore iniciado com Pizza e Cia em Ponta Verde",
     "Caixa aberto com R$ 150,00 de fundo",
@@ -572,6 +631,60 @@ export function SaboreApp({
         if (!response.ok || !result?.data || cancelled) return;
 
         const next = result.data;
+        const liveDeliveryOrders = next.orders.filter(
+          (order) =>
+            order.channel === "delivery" &&
+            !["paid", "cancelled"].includes(order.status),
+        );
+        const knownOrderIds = knownDeliveryOrderIdsRef.current;
+        const newPendingOrder = liveDeliveryOrders.find(
+          (order) =>
+            order.status === "pending_confirmation" && !knownOrderIds.has(order.id),
+        );
+        const canNotifyDelivery =
+          hasDeliveryAccess(next.organization) && canHandleDelivery(currentUser?.role);
+
+        knownDeliveryOrderIdsRef.current = new Set(
+          liveDeliveryOrders.map((order) => order.id),
+        );
+
+        if (!canNotifyDelivery && deliveryAlertRef.current) {
+          deliveryAlertRef.current = null;
+          setDeliveryAlertState(null);
+        }
+
+        if (canNotifyDelivery && deliveryAlertRef.current) {
+          const stillPending = next.orders.some(
+            (order) =>
+              order.id === deliveryAlertRef.current?.orderId &&
+              order.channel === "delivery" &&
+              order.status === "pending_confirmation",
+          );
+
+          if (!stillPending) {
+            deliveryAlertRef.current = null;
+            setDeliveryAlertState(null);
+          }
+        }
+
+        if (canNotifyDelivery && newPendingOrder) {
+          const customer = next.customers.find(
+            (candidate) => candidate.id === newPendingOrder.customerId,
+          );
+          const totals = calculateOrderTotals(newPendingOrder, next.products);
+          const nextAlert = {
+            orderId: newPendingOrder.id,
+            code: newPendingOrder.code,
+            customerName: customer?.name ?? "Cliente delivery",
+            total: totals.total,
+            openedAt: newPendingOrder.openedAt,
+          };
+
+          deliveryAlertRef.current = nextAlert;
+          setDeliveryAlertState(nextAlert);
+          playDeliveryNotificationSound();
+        }
+
         setOrganization(cloneData(next.organization));
         setUnit(cloneData(next.unit));
         setCustomers(cloneData(next.customers));
@@ -597,7 +710,7 @@ export function SaboreApp({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [accessToken, dataSource?.source]);
+  }, [accessToken, currentUser?.role, dataSource?.source]);
   const data = useMemo(
     () => ({
       ...initialData,
@@ -682,6 +795,16 @@ export function SaboreApp({
       position.status !== "ok" ||
       (position.closestExpiryDays !== null && position.closestExpiryDays <= 3),
   );
+  const canReceiveDeliveryAlerts =
+    hasDeliveryAccess(organization) && canHandleDelivery(currentUser?.role);
+  const pendingDeliveryOrders = useMemo(
+    () =>
+      orders.filter(
+        (order) =>
+          order.channel === "delivery" && order.status === "pending_confirmation",
+      ),
+    [orders],
+  );
 
   function log(message: string) {
     setActivity((current) => [message, ...current].slice(0, 6));
@@ -748,6 +871,11 @@ export function SaboreApp({
       existingOrderId?: string;
     } = {},
   ) {
+    if (channel === "delivery" && !canHandleDelivery(currentUser?.role)) {
+      log("Perfil sem acesso ao delivery");
+      return;
+    }
+
     if (channel === "delivery" && !hasDeliveryAccess(organization)) {
       log("Delivery proprio faz parte do plano Operacao ou modulo adicional");
       return;
@@ -1070,6 +1198,10 @@ export function SaboreApp({
           : order,
       ),
     );
+    if (deliveryAlertRef.current?.orderId === orderId && status !== "pending_confirmation") {
+      deliveryAlertRef.current = null;
+      setDeliveryAlertState(null);
+    }
     log(options.logMessage ?? `Pedido ${order.code} mudou para ${statusLabel[status]}`);
     void persistMutation({
       type: "update_order_status",
@@ -1517,6 +1649,21 @@ export function SaboreApp({
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {deliveryAlert && canReceiveDeliveryAlerts ? (
+        <DeliveryNewOrderToast
+          alert={deliveryAlert}
+          pendingCount={pendingDeliveryOrders.length}
+          onClose={() => {
+            deliveryAlertRef.current = null;
+            setDeliveryAlertState(null);
+          }}
+          onOpenDelivery={() => {
+            deliveryAlertRef.current = null;
+            setDeliveryAlertState(null);
+            changeView("delivery");
+          }}
+        />
+      ) : null}
       <div className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col lg:flex-row">
         <aside className="border-b border-border bg-sidebar px-4 py-4 lg:min-h-screen lg:w-64 lg:border-b-0 lg:border-r">
           <div className="flex items-center gap-3">
@@ -1581,7 +1728,7 @@ export function SaboreApp({
               {currentUser && (
                 <div className="flex flex-wrap items-center gap-2 xl:justify-end">
                   <Badge variant="neutral">{currentUser.name}</Badge>
-                  <Badge variant="info">{currentUser.role}</Badge>
+                  <Badge variant="info">{roleLabel[currentUser.role]}</Badge>
                   {onLogout && (
                     <Button size="sm" variant="ghost" onClick={onLogout}>
                       Sair
@@ -2786,6 +2933,66 @@ function TablesView({
   );
 }
 
+function DeliveryNewOrderToast({
+  alert,
+  pendingCount,
+  onClose,
+  onOpenDelivery,
+}: {
+  alert: DeliveryOrderAlert;
+  pendingCount: number;
+  onClose: () => void;
+  onOpenDelivery: () => void;
+}) {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-3 z-[80] px-3 sm:inset-auto sm:right-5 sm:top-5 sm:w-[380px]">
+      <div className="pointer-events-auto overflow-hidden rounded-lg border border-amber-300 bg-card shadow-2xl">
+        <div className="flex items-start gap-3 p-4">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-700">
+            <AlertTriangle className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Novo pedido delivery</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Pedido #{alert.code} aguardando confirmacao.
+                </p>
+              </div>
+              <button
+                aria-label="Fechar alerta de delivery"
+                className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+                onClick={onClose}
+                type="button"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="mt-3 grid gap-1 text-xs text-muted-foreground">
+              <span>{alert.customerName}</span>
+              <span>
+                {formatCurrency(alert.total)} | chegou ha {formatDuration(minutesSince(alert.openedAt))}
+              </span>
+              {pendingCount > 1 ? (
+                <span>{pendingCount} pedidos aguardando confirmacao.</span>
+              ) : null}
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button className="h-9 flex-1" size="sm" onClick={onOpenDelivery}>
+                <Truck />
+                Ver delivery
+              </Button>
+              <Button className="h-9" size="sm" variant="outline" onClick={onClose}>
+                Depois
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DeliveryView({
   orders,
   data,
@@ -3117,7 +3324,9 @@ function KitchenView({
           <Card key={status}>
             <CardHeader>
               <CardTitle>{statusLabel[status]}</CardTitle>
-              <CardDescription>Fila de producao por status.</CardDescription>
+              <CardDescription>
+                Fila de producao por status, incluindo delivery confirmado.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {orders
