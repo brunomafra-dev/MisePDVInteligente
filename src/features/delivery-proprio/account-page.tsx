@@ -190,12 +190,20 @@ export function DeliveryAccountPage() {
           <div className="bg-[#d90416] px-4 py-2 text-xs font-semibold text-white">
             <div className="flex items-center justify-between gap-3">
               <span>Cadastro do delivery</span>
-              <Link
-                className="rounded-md bg-white/15 px-2 py-1 text-[11px] font-semibold"
-                href={`/delivery/${deliveryStore.slug}`}
-              >
-                Cardapio
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  className="rounded-md bg-white/15 px-2 py-1 text-[11px] font-semibold"
+                  href={`/delivery/${deliveryStore.slug}/login`}
+                >
+                  Login
+                </Link>
+                <Link
+                  className="rounded-md bg-white/15 px-2 py-1 text-[11px] font-semibold"
+                  href={`/delivery/${deliveryStore.slug}`}
+                >
+                  Cardapio
+                </Link>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3 px-4 py-4">
@@ -216,7 +224,7 @@ export function DeliveryAccountPage() {
             />
             <div className="min-w-0">
               <p className="truncate text-sm text-[#7a4a25]">{deliveryStore.name}</p>
-              <h1 className="truncate text-xl font-semibold">Login e cadastro</h1>
+              <h1 className="truncate text-xl font-semibold">Fazer cadastro</h1>
             </div>
           </div>
         </header>

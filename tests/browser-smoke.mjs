@@ -383,13 +383,32 @@ async function verifyPublicDelivery(browser) {
   page.on("pageerror", (error) => errors.push(error.message));
 
   await page.goto(`${baseUrl}/delivery/pizza-e-cia`, { waitUntil: "networkidle" });
+  const loginLink = page.getByRole("link", { name: /Entrar na minha conta/i });
+  let loginRoutes = false;
+  let loginToCadastroRoutes = false;
+
+  if ((await loginLink.count()) > 0) {
+    await loginLink.first().click();
+    await page.waitForURL(/\/delivery\/pizza-e-cia\/login$/);
+    const loginText = await page.locator("body").innerText();
+    loginRoutes =
+      loginText.includes("Entrar na minha conta") &&
+      loginText.includes("Nao tem cadastro ainda? Cadastre-se aqui");
+    await page.getByRole("link", { name: /Cadastre-se aqui/i }).click();
+    await page.waitForURL(/\/delivery\/pizza-e-cia\/cadastro$/);
+    loginToCadastroRoutes = (await page.locator("body").innerText()).includes(
+      "Fazer cadastro",
+    );
+    await page.goto(`${baseUrl}/delivery/pizza-e-cia`, { waitUntil: "networkidle" });
+  }
+
   const cadastroLink = page.getByRole("link", { name: /Fazer cadastro/i });
   let cadastroRoutes = false;
 
   if ((await cadastroLink.count()) > 0) {
     await cadastroLink.first().click();
     await page.waitForURL(/\/delivery\/pizza-e-cia\/cadastro$/);
-    cadastroRoutes = (await page.locator("body").innerText()).includes("Login e cadastro");
+    cadastroRoutes = (await page.locator("body").innerText()).includes("Fazer cadastro");
     await page.goto(`${baseUrl}/delivery/pizza-e-cia`, { waitUntil: "networkidle" });
   }
 
@@ -422,6 +441,8 @@ async function verifyPublicDelivery(browser) {
 
   return {
     cadastroRoutes,
+    loginRoutes,
+    loginToCadastroRoutes,
     checkoutVisible,
     horizontalOverflow,
     overlay,
@@ -458,6 +479,8 @@ if (
   delivery.errors.length > 0 ||
   delivery.horizontalOverflow ||
   !delivery.cadastroRoutes ||
+  !delivery.loginRoutes ||
+  !delivery.loginToCadastroRoutes ||
   !delivery.checkoutVisible ||
   mobile.horizontalOverflow ||
   !mobile.supabaseSourceVisible ||

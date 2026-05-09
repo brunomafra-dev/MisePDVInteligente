@@ -304,7 +304,7 @@ export function DeliverySite() {
 
   function chooseSavedAccount() {
     if (!savedAccount) {
-      window.location.href = `/delivery/${deliveryStore.slug}/cadastro`;
+      window.location.href = `/delivery/${deliveryStore.slug}/login`;
       return;
     }
 
@@ -620,7 +620,7 @@ export function DeliverySite() {
               <div className="flex shrink-0 items-center gap-2">
                 <Link
                   className="rounded-md bg-white/15 px-2 py-1 text-[11px] font-semibold"
-                  href={`/delivery/${deliveryStore.slug}/cadastro`}
+                  href={`/delivery/${deliveryStore.slug}/login`}
                 >
                   Login
                 </Link>
@@ -907,17 +907,28 @@ function EntryChoiceSheet({
                 </span>
               </button>
             ) : (
-              <Link
-                className="rounded-lg border border-[#0f7f3a] bg-[#e6ffed] p-4 text-left"
-                href={`/delivery/${deliveryStore.slug}/cadastro`}
-              >
-                <span className="block font-semibold text-[#14532d]">
-                  Fazer cadastro
-                </span>
-                <span className="mt-1 block text-sm text-[#166534]">
-                  Cadastrar dados e enderecos para os proximos pedidos.
-                </span>
-              </Link>
+              <>
+                <Link
+                  className="rounded-lg border border-[#0f7f3a] bg-[#e6ffed] p-4 text-left"
+                  href={`/delivery/${deliveryStore.slug}/login`}
+                >
+                  <span className="block font-semibold text-[#14532d]">
+                    Entrar na minha conta
+                  </span>
+                  <span className="mt-1 block text-sm text-[#166534]">
+                    Usar um cadastro salvo neste aparelho.
+                  </span>
+                </Link>
+                <Link
+                  className="rounded-lg border border-[#f0dc90] bg-[#fff9e6] p-4 text-left"
+                  href={`/delivery/${deliveryStore.slug}/cadastro`}
+                >
+                  <span className="block font-semibold">Fazer cadastro</span>
+                  <span className="mt-1 block text-sm text-[#7a4a25]">
+                    Cadastrar dados e enderecos para os proximos pedidos.
+                  </span>
+                </Link>
+              </>
             )}
 
             <button
