@@ -383,6 +383,12 @@ async function verifyPublicDelivery(browser) {
   page.on("pageerror", (error) => errors.push(error.message));
 
   await page.goto(`${baseUrl}/delivery/pizza-e-cia`, { waitUntil: "networkidle" });
+  const guestButton = page.getByRole("button", { name: /Pedir sem cadastro/i });
+
+  if ((await guestButton.count()) > 0) {
+    await guestButton.first().click();
+  }
+
   await page.getByRole("button", { name: /^Salgados$/ }).click();
   await page.getByRole("button", { name: /Coxinha de frango R\$/ }).first().click();
   await page.getByRole("button", { name: /Ver sacola/i }).click();

@@ -67,6 +67,22 @@ type CheckoutState = {
   notes: string;
 };
 
+type CustomerPreference = "undecided" | "guest" | "save";
+
+type SavedDeliveryProfile = Pick<
+  CheckoutState,
+  | "name"
+  | "phone"
+  | "cpf"
+  | "fulfillment"
+  | "neighborhoodId"
+  | "street"
+  | "number"
+  | "complement"
+  | "reference"
+  | "paymentMethod"
+>;
+
 type OrderResult = {
   code: string;
   total: number;
@@ -99,6 +115,8 @@ const paymentLabels: Record<CheckoutState["paymentMethod"], string> = {
   debit: "Debito",
 };
 
+const profileStorageKey = `sabore:${deliveryStore.slug}:delivery-profile:v1`;
+
 function cartQuantity(cart: CartLine[]) {
   return cart.reduce((sum, line) => sum + line.quantity, 0);
 }
@@ -124,6 +142,49 @@ function inputClassName(className?: string) {
   );
 }
 
+function readSavedProfile() {
+  try {
+    if (typeof window === "undefined") return null;
+
+    const rawProfile = window.localStorage.getItem(profileStorageKey);
+    if (!rawProfile) return null;
+
+    const parsed = JSON.parse(rawProfile) as Partial<SavedDeliveryProfile>;
+
+    if (!parsed.name || !parsed.phone) return null;
+
+    return {
+      name: parsed.name,
+      phone: parsed.phone,
+      cpf: parsed.cpf ?? "",
+      fulfillment: parsed.fulfillment === "pickup" ? "pickup" : "delivery",
+      neighborhoodId: parsed.neighborhoodId ?? deliveryZones[0]?.id ?? "",
+      street: parsed.street ?? "",
+      number: parsed.number ?? "",
+      complement: parsed.complement ?? "",
+      reference: parsed.reference ?? "",
+      paymentMethod: parsed.paymentMethod ?? "pix",
+    } satisfies SavedDeliveryProfile;
+  } catch {
+    return null;
+  }
+}
+
+function profileFromCheckout(checkout: CheckoutState): SavedDeliveryProfile {
+  return {
+    name: checkout.name,
+    phone: checkout.phone,
+    cpf: checkout.cpf,
+    fulfillment: checkout.fulfillment,
+    neighborhoodId: checkout.neighborhoodId,
+    street: checkout.street,
+    number: checkout.number,
+    complement: checkout.complement,
+    reference: checkout.reference,
+    paymentMethod: checkout.paymentMethod,
+  };
+}
+
 export function DeliverySite() {
   const [activeCategory, setActiveCategory] = useState<DeliveryCategoryId>("pizzas");
   const [query, setQuery] = useState("");
@@ -140,6 +201,11 @@ export function DeliverySite() {
   const [formError, setFormError] = useState("");
   const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
   const [availability, setAvailability] = useState<Record<string, boolean>>({});
+  const [customerPreference, setCustomerPreference] =
+    useState<CustomerPreference>("undecided");
+  const [savedProfile, setSavedProfile] = useState<SavedDeliveryProfile | null>(() =>
+    readSavedProfile(),
+  );
 
   useEffect(() => {
     let active = true;
@@ -245,6 +311,23 @@ export function DeliverySite() {
 
   function patchCheckout(patch: Partial<CheckoutState>) {
     setCheckout((current) => ({ ...current, ...patch }));
+  }
+
+  function applyProfile(profile: SavedDeliveryProfile) {
+    setCheckout((current) => ({
+      ...current,
+      ...profile,
+    }));
+  }
+
+  function chooseGuest() {
+    setCustomerPreference("guest");
+    setCheckout(initialCheckout);
+  }
+
+  function chooseSaveProfile() {
+    if (savedProfile) applyProfile(savedProfile);
+    setCustomerPreference("save");
   }
 
   function togglePizzaFlavor(flavorId: string) {
@@ -363,6 +446,13 @@ export function DeliverySite() {
         throw new Error(result?.message ?? result?.error ?? "Nao foi possivel enviar o pedido.");
       }
 
+      if (customerPreference === "save") {
+        const nextProfile = profileFromCheckout(checkout);
+
+        window.localStorage.setItem(profileStorageKey, JSON.stringify(nextProfile));
+        setSavedProfile(nextProfile);
+      }
+
       setOrderResult(result.order);
       setCart([]);
       setCartOpen(false);
@@ -428,7 +518,7 @@ export function DeliverySite() {
                 variant="outline"
                 onClick={() => {
                   setOrderResult(null);
-                  setCheckout(initialCheckout);
+                  setCheckout(savedProfile ? { ...initialCheckout, ...savedProfile } : initialCheckout);
                 }}
               >
                 Fazer outro pedido
@@ -510,13 +600,23 @@ export function DeliverySite() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase text-[#9a3412]">
-                  Sem cadastro obrigatorio
+                  {customerPreference === "save"
+                    ? "Dados salvos"
+                    : "Sem cadastro obrigatorio"}
                 </p>
                 <p className="mt-1 text-sm text-[#5f331e]">
-                  Informe WhatsApp e endereco apenas na finalizacao.
+                  {customerPreference === "save"
+                    ? "Seus dados entram automaticamente no checkout deste aparelho."
+                    : "Informe WhatsApp e endereco apenas na finalizacao."}
                 </p>
               </div>
-              <Bike className="size-8 text-[#d90416]" />
+              <button
+                className="flex size-10 items-center justify-center rounded-md bg-white text-[#d90416]"
+                onClick={() => setCustomerPreference("undecided")}
+                type="button"
+              >
+                <Bike className="size-5" />
+              </button>
             </div>
           </div>
         </section>
@@ -638,7 +738,88 @@ export function DeliverySite() {
           onUpdateQuantity={updateLineQuantity}
         />
       ) : null}
+
+      {customerPreference === "undecided" ? (
+        <EntryChoiceSheet
+          savedProfile={savedProfile}
+          onChooseGuest={chooseGuest}
+          onChooseSaved={chooseSaveProfile}
+        />
+      ) : null}
     </main>
+  );
+}
+
+function EntryChoiceSheet({
+  savedProfile,
+  onChooseGuest,
+  onChooseSaved,
+}: {
+  savedProfile: SavedDeliveryProfile | null;
+  onChooseGuest: () => void;
+  onChooseSaved: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/45">
+      <div className="w-full rounded-t-lg bg-[#fffdf6] px-4 py-5 shadow-2xl">
+        <div className="mx-auto w-full max-w-[560px]">
+          <div className="flex items-center gap-3">
+            <Image
+              alt={`Logo ${deliveryStore.name}`}
+              src={deliveryStore.logoUrl}
+              width={52}
+              height={52}
+              className="size-[52px] rounded-md border border-[#f0dc90] bg-white object-contain p-1"
+            />
+            <div>
+              <p className="text-sm text-[#7a4a25]">{deliveryStore.name}</p>
+              <h2 className="text-xl font-semibold">Como deseja pedir?</h2>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3">
+            {savedProfile ? (
+              <button
+                className="rounded-lg border border-[#0f7f3a] bg-[#e6ffed] p-4 text-left"
+                onClick={onChooseSaved}
+                type="button"
+              >
+                <span className="block font-semibold text-[#14532d]">
+                  Continuar como {savedProfile.name}
+                </span>
+                <span className="mt-1 block text-sm text-[#166534]">
+                  Usar WhatsApp e endereco salvos neste aparelho.
+                </span>
+              </button>
+            ) : (
+              <button
+                className="rounded-lg border border-[#0f7f3a] bg-[#e6ffed] p-4 text-left"
+                onClick={onChooseSaved}
+                type="button"
+              >
+                <span className="block font-semibold text-[#14532d]">
+                  Fazer cadastro rapido
+                </span>
+                <span className="mt-1 block text-sm text-[#166534]">
+                  Salva seus dados neste aparelho depois do primeiro pedido.
+                </span>
+              </button>
+            )}
+
+            <button
+              className="rounded-lg border border-[#f0dc90] bg-white p-4 text-left"
+              onClick={onChooseGuest}
+              type="button"
+            >
+              <span className="block font-semibold">Pedir sem cadastro</span>
+              <span className="mt-1 block text-sm text-[#7a4a25]">
+                Informe os dados somente neste pedido.
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

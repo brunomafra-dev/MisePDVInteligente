@@ -2815,9 +2815,13 @@ function DeliveryView({
   const pendingOrders = deliveryOrders.filter(
     (order) => order.status === "pending_confirmation",
   );
+  const [availabilityOpen, setAvailabilityOpen] = useState(false);
   const availabilityByItem = Object.fromEntries(
     data.deliveryAvailability.map((item) => [item.itemId, item.available]),
   );
+  const unavailableCount = data.deliveryAvailability.filter(
+    (item) => item.available === false,
+  ).length;
 
   return (
     <div className="space-y-5 pt-5">
@@ -2837,15 +2841,17 @@ function DeliveryView({
         />
         <MetricCard
           label="Cardapio publico"
-          value={String(
-            data.deliveryAvailability.filter((item) => item.available === false).length,
-          )}
+          value={String(unavailableCount)}
           helper="Itens marcados em falta somem da venda do site."
           icon={ClipboardList}
         />
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="outline" onClick={() => setAvailabilityOpen(true)}>
+          <ClipboardList />
+          Disponibilidade do delivery
+        </Button>
         <Button onClick={onNewDelivery}>
           <Plus />
           Novo delivery
@@ -2981,14 +2987,41 @@ function DeliveryView({
           </CardContent>
         </Card>
       )}
-      <Card>
-        <CardHeader>
-          <CardTitle>Disponibilidade do delivery</CardTitle>
-          <CardDescription>
-            Marque item em falta para o cliente nao conseguir pedir no site.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-5 lg:grid-cols-2">
+      {availabilityOpen ? (
+        <DeliveryAvailabilityDialog
+          availabilityByItem={availabilityByItem}
+          onClose={() => setAvailabilityOpen(false)}
+          onToggleAvailability={onToggleAvailability}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function DeliveryAvailabilityDialog({
+  availabilityByItem,
+  onClose,
+  onToggleAvailability,
+}: {
+  availabilityByItem: Record<string, boolean>;
+  onClose: () => void;
+  onToggleAvailability: (itemId: string, available: boolean) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/40 p-0 sm:items-center sm:p-6">
+      <div className="mx-auto flex max-h-[92vh] w-full max-w-5xl flex-col rounded-t-lg border border-border bg-card shadow-2xl sm:rounded-lg">
+        <div className="flex items-start justify-between gap-3 border-b border-border p-4">
+          <div>
+            <h2 className="text-lg font-semibold">Disponibilidade do delivery</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Marque item em falta para bloquear no site publico.
+            </p>
+          </div>
+          <Button aria-label="Fechar disponibilidade" size="icon" variant="ghost" onClick={onClose}>
+            <X />
+          </Button>
+        </div>
+        <div className="grid gap-5 overflow-y-auto p-4 lg:grid-cols-2">
           {deliveryCatalogSections.map((section) => (
             <section key={section.id} className="space-y-3">
               <div>
@@ -3023,8 +3056,8 @@ function DeliveryView({
               </div>
             </section>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
