@@ -34,7 +34,7 @@ export class WhatsAppCloudProvider implements WhatsAppProvider {
         },
         body: JSON.stringify({
           messaging_product: "whatsapp",
-          to: input.to,
+          to: input.to.replace(/\D/g, ""),
           type: "template",
           template: {
             name: input.templateName,

@@ -241,6 +241,13 @@ const paymentLabel: Record<PaymentMethod, string> = {
   online: "Online",
 };
 
+const whatsappStatusLabel: Record<Order["whatsappStatus"], string> = {
+  not_sent: "nao enviado",
+  queued: "na fila",
+  sent: "enviado",
+  failed: "falhou",
+};
+
 const roleLabel: Record<Role, string> = {
   owner: "Dono/Admin",
   manager: "Gerente",
@@ -591,8 +598,9 @@ export function SaboreApp({
     cloneData(initialData.cashSession),
   );
   const [composer, setComposer] = useState<ComposerState | null>(null);
-  const [deliveryAlert, setDeliveryAlertState] = useState<DeliveryOrderAlert | null>(null);
-  const deliveryAlertRef = useRef<DeliveryOrderAlert | null>(null);
+  const [dismissedDeliveryAlertIds, setDismissedDeliveryAlertIds] = useState<string[]>(
+    [],
+  );
   const knownDeliveryOrderIdsRef = useRef<Set<string>>(
     new Set(
       initialData.orders
@@ -648,40 +656,7 @@ export function SaboreApp({
           liveDeliveryOrders.map((order) => order.id),
         );
 
-        if (!canNotifyDelivery && deliveryAlertRef.current) {
-          deliveryAlertRef.current = null;
-          setDeliveryAlertState(null);
-        }
-
-        if (canNotifyDelivery && deliveryAlertRef.current) {
-          const stillPending = next.orders.some(
-            (order) =>
-              order.id === deliveryAlertRef.current?.orderId &&
-              order.channel === "delivery" &&
-              order.status === "pending_confirmation",
-          );
-
-          if (!stillPending) {
-            deliveryAlertRef.current = null;
-            setDeliveryAlertState(null);
-          }
-        }
-
         if (canNotifyDelivery && newPendingOrder) {
-          const customer = next.customers.find(
-            (candidate) => candidate.id === newPendingOrder.customerId,
-          );
-          const totals = calculateOrderTotals(newPendingOrder, next.products);
-          const nextAlert = {
-            orderId: newPendingOrder.id,
-            code: newPendingOrder.code,
-            customerName: customer?.name ?? "Cliente delivery",
-            total: totals.total,
-            openedAt: newPendingOrder.openedAt,
-          };
-
-          deliveryAlertRef.current = nextAlert;
-          setDeliveryAlertState(nextAlert);
           playDeliveryNotificationSound();
         }
 
@@ -805,6 +780,32 @@ export function SaboreApp({
       ),
     [orders],
   );
+  const deliveryAlert = useMemo(() => {
+    if (!canReceiveDeliveryAlerts) return null;
+
+    const order = [...pendingDeliveryOrders]
+      .sort((left, right) => left.openedAt.localeCompare(right.openedAt))
+      .find((candidate) => !dismissedDeliveryAlertIds.includes(candidate.id));
+
+    if (!order) return null;
+
+    const customer = customers.find((candidate) => candidate.id === order.customerId);
+    const totals = calculateOrderTotals(order, products);
+
+    return {
+      orderId: order.id,
+      code: order.code,
+      customerName: customer?.name ?? "Cliente delivery",
+      total: totals.total,
+      openedAt: order.openedAt,
+    } satisfies DeliveryOrderAlert;
+  }, [
+    canReceiveDeliveryAlerts,
+    customers,
+    dismissedDeliveryAlertIds,
+    pendingDeliveryOrders,
+    products,
+  ]);
 
   function log(message: string) {
     setActivity((current) => [message, ...current].slice(0, 6));
@@ -1198,10 +1199,6 @@ export function SaboreApp({
           : order,
       ),
     );
-    if (deliveryAlertRef.current?.orderId === orderId && status !== "pending_confirmation") {
-      deliveryAlertRef.current = null;
-      setDeliveryAlertState(null);
-    }
     log(options.logMessage ?? `Pedido ${order.code} mudou para ${statusLabel[status]}`);
     void persistMutation({
       type: "update_order_status",
@@ -1365,17 +1362,30 @@ export function SaboreApp({
     const customer = data.customers.find((candidate) => candidate.id === order.customerId);
     const recipient = detail?.phone ?? customer?.phone;
 
+    if (detail && !detail.whatsappOptIn) {
+      log(`Cliente do pedido ${order.code} nao aceitou avisos por WhatsApp`);
+      return;
+    }
+
     if (!recipient) {
       log(`Pedido ${order.code} sem WhatsApp do cliente`);
       return;
     }
 
-    await fetch("/api/whatsapp/send", {
+    if (!accessToken) {
+      log("Login obrigatorio para enviar WhatsApp pelo Sabore");
+      return;
+    }
+
+    const response = await fetch("/api/whatsapp/send", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         unitId: order.unitId,
-        to: recipient.startsWith("+") ? recipient : `+${recipient}`,
+        to: recipient.replace(/\D/g, ""),
         templateName: "pedido_status_delivery",
         parameters: {
           codigo: order.code,
@@ -1383,18 +1393,33 @@ export function SaboreApp({
         },
       }),
     });
+    const result = (await response.json().catch(() => null)) as
+      | { status?: Order["whatsappStatus"]; provider?: string; error?: string }
+      | null;
+    const nextStatus =
+      response.ok &&
+      (result?.status === "sent" ||
+        result?.status === "queued" ||
+        result?.status === "failed")
+        ? result.status
+        : "failed";
+
     setOrders((current) =>
       current.map((candidate) =>
         candidate.id === orderId
-          ? { ...candidate, whatsappStatus: "sent" }
+          ? { ...candidate, whatsappStatus: nextStatus }
           : candidate,
       ),
     );
-    log(`WhatsApp de status enviado para pedido ${order.code}`);
+    log(
+      nextStatus === "failed"
+        ? `WhatsApp do pedido ${order.code} falhou: ${result?.error ?? "verifique a integracao"}`
+        : `WhatsApp do pedido ${order.code} ${whatsappStatusLabel[nextStatus]} (${result?.provider ?? "provider"})`,
+    );
     void persistMutation({
       type: "update_whatsapp_status",
       orderId,
-      whatsappStatus: "sent",
+      whatsappStatus: nextStatus,
     });
   }
 
@@ -1654,12 +1679,16 @@ export function SaboreApp({
           alert={deliveryAlert}
           pendingCount={pendingDeliveryOrders.length}
           onClose={() => {
-            deliveryAlertRef.current = null;
-            setDeliveryAlertState(null);
+            setDismissedDeliveryAlertIds((current) => [
+              ...current.filter((id) => id !== deliveryAlert.orderId),
+              deliveryAlert.orderId,
+            ]);
           }}
           onOpenDelivery={() => {
-            deliveryAlertRef.current = null;
-            setDeliveryAlertState(null);
+            setDismissedDeliveryAlertIds((current) => [
+              ...current.filter((id) => id !== deliveryAlert.orderId),
+              deliveryAlert.orderId,
+            ]);
             changeView("delivery");
           }}
         />
