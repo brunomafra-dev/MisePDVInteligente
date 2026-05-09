@@ -5,7 +5,6 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Bike,
-  Check,
   ChevronRight,
   Clock3,
   CreditCard,
@@ -84,12 +83,36 @@ type SavedDeliveryProfile = Pick<
 >;
 
 type OrderResult = {
+  id: string;
   code: string;
   total: number;
   etaMin: number;
   etaMax: number;
   whatsappStatus: string;
   status: "pending_confirmation" | "new";
+};
+
+type SavedOrderReference = {
+  id: string;
+  code: string;
+  phone: string;
+  createdAt: string;
+};
+
+type PublicOrderStatus = {
+  id: string;
+  code: string;
+  status: string;
+  statusLabel: string;
+  openedAt: string;
+  etaMin: number;
+  etaMax: number;
+  total: number;
+  items: Array<{
+    name: string;
+    quantity: number;
+    unitPrice: number;
+  }>;
 };
 
 const initialCheckout: CheckoutState = {
@@ -116,6 +139,7 @@ const paymentLabels: Record<CheckoutState["paymentMethod"], string> = {
 };
 
 const profileStorageKey = `sabore:${deliveryStore.slug}:delivery-profile:v1`;
+const ordersStorageKey = `sabore:${deliveryStore.slug}:orders:v1`;
 
 function cartQuantity(cart: CartLine[]) {
   return cart.reduce((sum, line) => sum + line.quantity, 0);
@@ -185,6 +209,30 @@ function profileFromCheckout(checkout: CheckoutState): SavedDeliveryProfile {
   };
 }
 
+function readSavedOrders() {
+  try {
+    if (typeof window === "undefined") return [];
+
+    const rawOrders = window.localStorage.getItem(ordersStorageKey);
+    if (!rawOrders) return [];
+
+    const parsed = JSON.parse(rawOrders) as Partial<SavedOrderReference>[];
+
+    return parsed
+      .filter(
+        (order): order is SavedOrderReference =>
+          Boolean(order.id && order.code && order.phone && order.createdAt),
+      )
+      .slice(0, 20);
+  } catch {
+    return [];
+  }
+}
+
+function writeSavedOrders(orders: SavedOrderReference[]) {
+  window.localStorage.setItem(ordersStorageKey, JSON.stringify(orders.slice(0, 20)));
+}
+
 export function DeliverySite() {
   const [activeCategory, setActiveCategory] = useState<DeliveryCategoryId>("pizzas");
   const [query, setQuery] = useState("");
@@ -206,6 +254,13 @@ export function DeliverySite() {
   const [savedProfile, setSavedProfile] = useState<SavedDeliveryProfile | null>(() =>
     readSavedProfile(),
   );
+  const [savedOrders, setSavedOrders] = useState<SavedOrderReference[]>(() =>
+    readSavedOrders(),
+  );
+  const [ordersOpen, setOrdersOpen] = useState(false);
+  const [publicOrders, setPublicOrders] = useState<PublicOrderStatus[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -328,6 +383,67 @@ export function DeliverySite() {
   function chooseSaveProfile() {
     if (savedProfile) applyProfile(savedProfile);
     setCustomerPreference("save");
+  }
+
+  function openMyOrders() {
+    setCustomerPreference((current) => (current === "undecided" ? "guest" : current));
+    setOrdersOpen(true);
+    void loadMyOrders();
+  }
+
+  function rememberOrder(order: OrderResult) {
+    const nextOrders = [
+      {
+        id: order.id,
+        code: order.code,
+        phone: checkout.phone,
+        createdAt: new Date().toISOString(),
+      },
+      ...savedOrders.filter((savedOrder) => savedOrder.id !== order.id),
+    ].slice(0, 20);
+
+    writeSavedOrders(nextOrders);
+    setSavedOrders(nextOrders);
+  }
+
+  async function loadMyOrders() {
+    if (savedOrders.length === 0) {
+      setPublicOrders([]);
+      return;
+    }
+
+    setOrdersLoading(true);
+    setOrdersError("");
+
+    try {
+      const response = await fetch("/api/delivery/pizza-e-cia/orders/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orders: savedOrders.map((order) => ({
+            id: order.id,
+            phone: order.phone,
+          })),
+        }),
+      });
+      const result = (await response.json().catch(() => null)) as
+        | { orders?: PublicOrderStatus[]; message?: string }
+        | null;
+
+      if (!response.ok || !result?.orders) {
+        throw new Error(result?.message ?? "Nao foi possivel carregar seus pedidos.");
+      }
+
+      setPublicOrders(result.orders);
+    } catch (error) {
+      setOrdersError(
+        error instanceof Error
+          ? error.message
+          : "Nao foi possivel carregar seus pedidos.",
+      );
+    } finally {
+      setOrdersLoading(false);
+    }
   }
 
   function togglePizzaFlavor(flavorId: string) {
@@ -453,6 +569,7 @@ export function DeliverySite() {
         setSavedProfile(nextProfile);
       }
 
+      rememberOrder(result.order);
       setOrderResult(result.order);
       setCart([]);
       setCartOpen(false);
@@ -477,11 +594,13 @@ export function DeliverySite() {
         <div className="mx-auto flex min-h-screen w-full max-w-[560px] flex-col px-4 py-6">
           <div className="rounded-lg border border-[#f3d66b] bg-white p-5 shadow-[0_24px_60px_-46px_rgba(91,27,18,0.5)]">
             <div className="flex items-center gap-3">
-              <span className="flex size-12 items-center justify-center rounded-md bg-[#0f7f3a] text-white">
-                <Check className="size-6" />
+              <span className="flex size-12 items-center justify-center rounded-md bg-[#fff1a8] text-[#9a3412]">
+                <Clock3 className="size-6" />
               </span>
               <div>
-                <p className="text-sm font-medium text-[#8b2d19]">Pedido enviado</p>
+                <p className="text-sm font-medium text-[#8b2d19]">
+                  Aguardando confirmacao
+                </p>
                 <h1 className="text-2xl font-semibold">#{orderResult.code}</h1>
               </div>
             </div>
@@ -515,6 +634,12 @@ export function DeliverySite() {
               </a>
               <Button
                 className="h-12"
+                onClick={openMyOrders}
+              >
+                Ver meus pedidos
+              </Button>
+              <Button
+                className="h-12"
                 variant="outline"
                 onClick={() => {
                   setOrderResult(null);
@@ -525,6 +650,16 @@ export function DeliverySite() {
               </Button>
             </div>
           </div>
+          {ordersOpen ? (
+            <MyOrdersSheet
+              loading={ordersLoading}
+              orders={publicOrders}
+              error={ordersError}
+              savedOrderCount={savedOrders.length}
+              onClose={() => setOrdersOpen(false)}
+              onRefresh={loadMyOrders}
+            />
+          ) : null}
         </div>
       </main>
     );
@@ -535,7 +670,16 @@ export function DeliverySite() {
       <div className="mx-auto min-h-screen w-full max-w-[720px] bg-[#fffdf6] shadow-[0_0_80px_-58px_rgba(91,27,18,0.5)]">
         <header className="sticky top-0 z-30 border-b border-[#f0dc90] bg-[#fffdf6]/95 backdrop-blur">
           <div className="bg-[#d90416] px-4 py-2 text-xs font-semibold text-white">
-            Delivery proprio {deliveryStore.phoneDisplay}
+            <div className="flex items-center justify-between gap-3">
+              <span>Delivery proprio {deliveryStore.phoneDisplay}</span>
+              <button
+                className="rounded-md bg-white/15 px-2 py-1 text-[11px] font-semibold"
+                onClick={openMyOrders}
+                type="button"
+              >
+                Meus pedidos
+              </button>
+            </div>
           </div>
           <div className="flex items-center gap-3 px-4 py-4">
             <Image
@@ -741,9 +885,21 @@ export function DeliverySite() {
 
       {customerPreference === "undecided" ? (
         <EntryChoiceSheet
+          savedOrderCount={savedOrders.length}
           savedProfile={savedProfile}
           onChooseGuest={chooseGuest}
           onChooseSaved={chooseSaveProfile}
+          onOpenOrders={openMyOrders}
+        />
+      ) : null}
+      {ordersOpen ? (
+        <MyOrdersSheet
+          loading={ordersLoading}
+          orders={publicOrders}
+          error={ordersError}
+          savedOrderCount={savedOrders.length}
+          onClose={() => setOrdersOpen(false)}
+          onRefresh={loadMyOrders}
         />
       ) : null}
     </main>
@@ -751,13 +907,17 @@ export function DeliverySite() {
 }
 
 function EntryChoiceSheet({
+  savedOrderCount,
   savedProfile,
   onChooseGuest,
   onChooseSaved,
+  onOpenOrders,
 }: {
+  savedOrderCount: number;
   savedProfile: SavedDeliveryProfile | null;
   onChooseGuest: () => void;
   onChooseSaved: () => void;
+  onOpenOrders: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/45">
@@ -816,6 +976,103 @@ function EntryChoiceSheet({
                 Informe os dados somente neste pedido.
               </span>
             </button>
+
+            {savedOrderCount > 0 ? (
+              <button
+                className="rounded-lg border border-[#f0dc90] bg-[#fff9e6] p-4 text-left"
+                onClick={onOpenOrders}
+                type="button"
+              >
+                <span className="block font-semibold">Meus pedidos</span>
+                <span className="mt-1 block text-sm text-[#7a4a25]">
+                  Acompanhar pedidos feitos neste aparelho.
+                </span>
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MyOrdersSheet({
+  error,
+  loading,
+  orders,
+  savedOrderCount,
+  onClose,
+  onRefresh,
+}: {
+  error: string;
+  loading: boolean;
+  orders: PublicOrderStatus[];
+  savedOrderCount: number;
+  onClose: () => void;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end bg-black/45">
+      <div className="max-h-[88vh] w-full overflow-hidden rounded-t-lg bg-[#fffdf6] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[#f0dc90] px-4 py-3">
+          <div>
+            <p className="text-sm text-[#7a4a25]">{savedOrderCount} salvo(s)</p>
+            <h2 className="text-lg font-semibold">Meus pedidos</h2>
+          </div>
+          <button
+            aria-label="Fechar meus pedidos"
+            className="flex size-10 items-center justify-center rounded-md border border-[#f0dc90] bg-white"
+            onClick={onClose}
+            type="button"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="max-h-[calc(88vh-72px)] overflow-y-auto px-4 py-4">
+          {error ? (
+            <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+          <Button className="mb-3 h-11 w-full" variant="outline" onClick={onRefresh}>
+            {loading ? "Atualizando..." : "Atualizar status"}
+          </Button>
+          {loading && orders.length === 0 ? (
+            <div className="rounded-lg border border-[#f0dc90] bg-white p-4 text-sm text-[#7a4a25]">
+              Carregando pedidos...
+            </div>
+          ) : null}
+          {!loading && orders.length === 0 ? (
+            <div className="rounded-lg border border-[#f0dc90] bg-white p-4 text-sm text-[#7a4a25]">
+              Nenhum pedido encontrado neste aparelho.
+            </div>
+          ) : null}
+          <div className="grid gap-3">
+            {orders.map((order) => (
+              <article key={order.id} className="rounded-lg border border-[#f0dc90] bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-[#7a4a25]">Pedido #{order.code}</p>
+                    <h3 className="mt-1 font-semibold">{order.statusLabel}</h3>
+                  </div>
+                  <span className="rounded-md bg-[#fff1a8] px-2 py-1 text-xs font-semibold text-[#78350f]">
+                    {order.etaMin}-{order.etaMax} min
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-2 text-sm text-[#5f331e]">
+                  {order.items.slice(0, 4).map((item) => (
+                    <div key={`${order.id}-${item.name}`} className="flex justify-between gap-3">
+                      <span>{item.quantity}x {item.name}</span>
+                      <span>{formatCurrency(item.unitPrice * item.quantity)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex justify-between border-t border-[#f0dc90] pt-3 text-sm font-semibold">
+                  <span>Total</span>
+                  <span>{formatCurrency(order.total)}</span>
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       </div>
