@@ -1,67 +1,141 @@
-# Sabore
+# Sabore PDV Inteligente
 
-SaaS/PDV inteligente para restaurantes locais: pedidos de balcao, mesa e delivery proprio, cozinha, caixa manual, estoque, ficha tecnica, CMV, validade, recibo nao fiscal e modulos opcionais.
+SaaS/PDV para restaurantes locais, com pedidos, caixa, estoque, ficha técnica, CMV, validade, recibo não fiscal e módulos opcionais.
 
-O app atual entrega um MVP navegavel com dados demo e integracoes mockadas. O plano base gera conta/recibo nao fiscal; fiscal NFC-e, marketplaces e WhatsApp IA entram como modulos assistidos.
+[Demo ativa](https://sabore-pdv-inteligente.vercel.app)
 
-## Commercial Model
+## Por que esse projeto existe
 
-- Essencial: R$59,90/month.
-- Operacao: R$89,90/month.
-- Site Delivery Proprio: R$300 setup + R$39,90/month.
-- Fiscal NFC-e: R$399-699 setup, with API/certificate/accounting paid by the restaurant or transparently passed through.
-- iFood and 99Food: R$299 setup + R$99,90/month each, depending on partner/API availability.
-- WhatsApp Status: R$29,90/month.
-- Agente IA WhatsApp: R$399 setup + R$99,90/month, with Meta costs possibly passed through.
+Restaurantes pequenos normalmente precisam operar pedidos, estoque, caixa, delivery e custos com ferramentas separadas ou planilhas. O Sabore foi criado como um MVP de operação comercial para centralizar esse fluxo de forma simples.
 
-## Getting Started
+O projeto conecta minha experiência anterior em cozinha e operação com desenvolvimento de software: regras de negócio, rotina de equipe, controle de estoque, margem e fluxo de atendimento.
 
-First, run the development server:
+## Funcionalidades
+
+- Pedidos de balcão, mesa e delivery próprio.
+- Cozinha e fluxo operacional de preparo.
+- Caixa manual e recibo não fiscal.
+- Gestão de produtos, estoque e validade.
+- Ficha técnica e cálculo de CMV.
+- Site público de delivery.
+- Páginas públicas de suporte, termos, privacidade, cookies e LGPD.
+- Integrações mockadas para WhatsApp, Mercado Pago e NFC-e.
+- Testes de domínio para pedidos, estoque, caixa e segurança de payload.
+
+## Stack
+
+- Next.js App Router
+- React
+- TypeScript
+- Tailwind CSS
+- Supabase
+- Zod
+- Lucide React
+- Playwright
+- TSX test runner
+
+## Arquitetura
+
+```txt
+src/
+  app/
+    app/
+    delivery/
+    site/
+    api/
+      sabore/
+      delivery/
+      payments/
+      fiscal/
+      whatsapp/
+  components/
+    sabore-app.tsx
+    sabore-auth-shell.tsx
+  features/
+    delivery-proprio/
+  lib/
+    operations.ts
+    sabore-mutations.ts
+    demo-data.ts
+    integrations/
+supabase/
+  schema.sql
+  seed.sql
+tests/
+```
+
+## Modelo comercial simulado
+
+- Essencial: R$59,90/mês.
+- Operação: R$89,90/mês.
+- Site Delivery Próprio: R$300 setup + R$39,90/mês.
+- Fiscal NFC-e: setup separado, com custos de API/certificado/contabilidade.
+- iFood/99Food: módulos assistidos conforme disponibilidade de API/parceiros.
+- WhatsApp Status e Agente IA WhatsApp como módulos opcionais.
+
+## Rodando localmente
 
 ```bash
+npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to access the app.
+Abra `http://localhost:3000`.
 
-## Public Routes
+Copie `.env.example` para `.env.local` e preencha apenas o que for usar:
 
-- `/`: Sabore app and authentication flow.
-- `/site`: public landing page.
-- `/suporte`: public support and contact guidance.
-- `/termos-de-uso`: terms of use draft.
-- `/politica-de-privacidade`: privacy policy draft.
-- `/politica-de-cookies`: cookie policy draft.
-- `/acordo-de-tratamento-de-dados`: LGPD data processing agreement draft.
-- `/app`: legacy redirect to `/`.
-
-## Scripts
-
-- `npm run dev`: local development.
-- `npm run build`: production build.
-- `npm run lint`: ESLint.
-- `npm run test`: domain tests for order, stock and cash calculations.
-
-## Env Vars
-
-Copy `.env.example` to `.env.local` and fill only what you need:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `FOCUS_NFE_TOKEN`
-- `FOCUS_NFE_BASE_URL`
-- `MERCADO_PAGO_ACCESS_TOKEN`
-- `MERCADO_PAGO_BASE_URL`
-- `WHATSAPP_ACCESS_TOKEN`
-- `WHATSAPP_PHONE_NUMBER_ID`
-- `WHATSAPP_GRAPH_BASE_URL`
-- `WHATSAPP_GRAPH_VERSION`
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+FOCUS_NFE_TOKEN=
+MERCADO_PAGO_ACCESS_TOKEN=
+WHATSAPP_ACCESS_TOKEN=
+```
 
 ## Supabase
 
-Run `supabase/schema.sql` in a Supabase project to create the first production-ready data model.
-Then run `supabase/seed.sql` to load the pilot data used by the local MVP.
-Use the project base URL in `NEXT_PUBLIC_SUPABASE_URL`, for example `https://example.supabase.co`, not the REST endpoint ending in `/rest/v1`.
+Para usar o modelo inicial de dados:
 
-See `docs/architecture.md` for module boundaries and v1 limits.
+```bash
+supabase db reset
+```
+
+Ou execute manualmente:
+
+```bash
+supabase/schema.sql
+supabase/seed.sql
+```
+
+## Scripts
+
+```bash
+npm run dev
+npm run build
+npm run lint
+npm run test
+npm run test:browser
+```
+
+## Aprendizados
+
+- Sistemas de operação exigem regras de negócio claras antes da interface.
+- Estoque, pedidos e caixa precisam de consistência, validação e testes.
+- Experiência real em operação ajuda a pensar casos que não aparecem em CRUD simples.
+- Mesmo um MVP precisa comunicar limites: fiscal, pagamentos e integrações externas.
+
+## Próximos passos
+
+- Melhorar README com prints reais da demo.
+- Evoluir autenticação e multiempresa.
+- Trocar mocks por integrações reais conforme credenciais/API.
+- Criar mais testes de fluxo operacional.
+- Refinar dashboard de indicadores para margem, estoque e vendas.
+
+## Documentação
+
+- [`docs/architecture.md`](docs/architecture.md)
+- [`docs/product-plan-alignment.md`](docs/product-plan-alignment.md)
+- [`docs/legal/lgpd-launch-checklist.md`](docs/legal/lgpd-launch-checklist.md)
+
