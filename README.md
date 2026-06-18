@@ -1,26 +1,26 @@
-# Sabore PDV Inteligente
+# Mise PDV Inteligente
 
-SaaS/PDV para restaurantes locais, com pedidos, caixa, estoque, ficha técnica, CMV, validade, recibo não fiscal e módulos opcionais.
+Operacao inteligente para restaurantes.
 
-[Demo ativa](https://sabore-pdv-inteligente.vercel.app)
+SaaS/PDV para restaurantes locais, com pedidos, caixa, estoque, ficha tecnica, CMV, validade, recibo nao fiscal e modulos opcionais.
 
 ## Por que esse projeto existe
 
-Restaurantes pequenos normalmente precisam operar pedidos, estoque, caixa, delivery e custos com ferramentas separadas ou planilhas. O Sabore foi criado como um MVP de operação comercial para centralizar esse fluxo de forma simples.
+Restaurantes pequenos normalmente precisam operar pedidos, estoque, caixa, delivery e custos com ferramentas separadas ou planilhas. O Mise foi criado como um MVP de operacao comercial para centralizar esse fluxo de forma simples.
 
-O projeto conecta minha experiência anterior em cozinha e operação com desenvolvimento de software: regras de negócio, rotina de equipe, controle de estoque, margem e fluxo de atendimento.
+O projeto conecta experiencia real em cozinha e operacao com desenvolvimento de software: regras de negocio, rotina de equipe, controle de estoque, margem e fluxo de atendimento.
 
 ## Funcionalidades
 
-- Pedidos de balcão, mesa e delivery próprio.
+- Pedidos de balcao, mesa e delivery proprio.
 - Cozinha e fluxo operacional de preparo.
-- Caixa manual e recibo não fiscal.
-- Gestão de produtos, estoque e validade.
-- Ficha técnica e cálculo de CMV.
-- Site público de delivery.
-- Páginas públicas de suporte, termos, privacidade, cookies e LGPD.
-- Integrações mockadas para WhatsApp, Mercado Pago e NFC-e.
-- Testes de domínio para pedidos, estoque, caixa e segurança de payload.
+- Caixa manual e recibo nao fiscal.
+- Gestao de produtos, estoque e validade.
+- Ficha tecnica e calculo de CMV.
+- Site publico de delivery.
+- Paginas publicas de suporte, termos, privacidade, cookies e LGPD.
+- Integracoes mockadas para WhatsApp, Mercado Pago e NFC-e.
+- Testes de dominio para pedidos, estoque, caixa e seguranca de payload.
 
 ## Stack
 
@@ -43,19 +43,19 @@ src/
     delivery/
     site/
     api/
-      sabore/
+      mise/
       delivery/
       payments/
       fiscal/
       whatsapp/
   components/
-    sabore-app.tsx
-    sabore-auth-shell.tsx
+    mise-app.tsx
+    mise-auth-shell.tsx
   features/
     delivery-proprio/
   lib/
     operations.ts
-    sabore-mutations.ts
+    mise-mutations.ts
     demo-data.ts
     integrations/
 supabase/
@@ -64,14 +64,41 @@ supabase/
 tests/
 ```
 
+## Rotas
+
+- `/`: Mise app and authentication flow.
+- `/site`: public landing page.
+- `/suporte`: public support and contact guidance.
+- `/termos-de-uso`: terms of use draft.
+- `/politica-de-privacidade`: privacy policy draft.
+- `/politica-de-cookies`: cookie policy draft.
+- `/acordo-de-tratamento-de-dados`: LGPD data processing agreement draft.
+- `/app`: legacy redirect to `/`.
+
 ## Modelo comercial simulado
 
-- Essencial: R$59,90/mês.
-- Operação: R$89,90/mês.
-- Site Delivery Próprio: R$300 setup + R$39,90/mês.
+- Essencial: R$59,90/mes.
+- Operacao: R$89,90/mes.
+- Site Delivery Proprio: R$300 setup + R$39,90/mes.
 - Fiscal NFC-e: setup separado, com custos de API/certificado/contabilidade.
-- iFood/99Food: módulos assistidos conforme disponibilidade de API/parceiros.
-- WhatsApp Status e Agente IA WhatsApp como módulos opcionais.
+- iFood/99Food: modulos assistidos conforme disponibilidade de API/parceiros.
+- WhatsApp Status e Agente IA WhatsApp como modulos opcionais.
+
+## Env Vars
+
+Copie `.env.example` para `.env.local` e preencha apenas o que for usar:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `FOCUS_NFE_TOKEN`
+- `FOCUS_NFE_BASE_URL`
+- `MERCADO_PAGO_ACCESS_TOKEN`
+- `MERCADO_PAGO_BASE_URL`
+- `WHATSAPP_ACCESS_TOKEN`
+- `WHATSAPP_PHONE_NUMBER_ID`
+- `WHATSAPP_GRAPH_BASE_URL`
+- `WHATSAPP_GRAPH_VERSION`
 
 ## Rodando localmente
 
@@ -81,17 +108,6 @@ npm run dev
 ```
 
 Abra `http://localhost:3000`.
-
-Copie `.env.example` para `.env.local` e preencha apenas o que for usar:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-FOCUS_NFE_TOKEN=
-MERCADO_PAGO_ACCESS_TOKEN=
-WHATSAPP_ACCESS_TOKEN=
-```
 
 ## Supabase
 
@@ -120,22 +136,22 @@ npm run test:browser
 
 ## Aprendizados
 
-- Sistemas de operação exigem regras de negócio claras antes da interface.
-- Estoque, pedidos e caixa precisam de consistência, validação e testes.
-- Experiência real em operação ajuda a pensar casos que não aparecem em CRUD simples.
-- Mesmo um MVP precisa comunicar limites: fiscal, pagamentos e integrações externas.
+- Sistemas de operacao exigem regras de negocio claras antes da interface.
+- Estoque, pedidos e caixa precisam de consistencia, validacao e testes.
+- Experiencia real em operacao ajuda a pensar casos que nao aparecem em CRUD simples.
+- Mesmo um MVP precisa comunicar limites: fiscal, pagamentos e integracoes externas.
 
-## Próximos passos
+## Proximos passos
 
+- Configurar dominio definitivo da marca Mise.
 - Melhorar README com prints reais da demo.
-- Evoluir autenticação e multiempresa.
-- Trocar mocks por integrações reais conforme credenciais/API.
+- Evoluir autenticacao e multiempresa.
+- Trocar mocks por integracoes reais conforme credenciais/API.
 - Criar mais testes de fluxo operacional.
 - Refinar dashboard de indicadores para margem, estoque e vendas.
 
-## Documentação
+## Documentacao
 
 - [`docs/architecture.md`](docs/architecture.md)
 - [`docs/product-plan-alignment.md`](docs/product-plan-alignment.md)
 - [`docs/legal/lgpd-launch-checklist.md`](docs/legal/lgpd-launch-checklist.md)
-

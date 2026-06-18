@@ -1,4 +1,4 @@
-# Sabore Plan Alignment
+# Mise Plan Alignment
 
 This note checks the current product against the revised commercial model.
 
@@ -40,7 +40,7 @@ This note checks the current product against the revised commercial model.
 
 ## Competitive Positioning
 
-TalkyFood should be treated as the aggressive low-price competitor. Sabore should avoid copying "everything included" claims until costs are proven. The safer strategy is:
+TalkyFood should be treated as the aggressive low-price competitor. Mise should avoid copying "everything included" claims until costs are proven. The safer strategy is:
 
 - Low-friction base plan.
 - Operacao plan as the real restaurant operations value.

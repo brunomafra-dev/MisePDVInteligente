@@ -24,7 +24,7 @@ export async function queryMust<T>(
 }
 
 export async function resolveDeliveryUnit(client: SupabaseClient) {
-  const preferredUnitId = process.env.SABORE_DELIVERY_UNIT_ID ?? seedUnitId;
+  const preferredUnitId = process.env.MISE_DELIVERY_UNIT_ID ?? seedUnitId;
   const unitById = await queryMust(
     "restaurant_units",
     client

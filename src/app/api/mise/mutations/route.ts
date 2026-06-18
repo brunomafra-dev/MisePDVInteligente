@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { saboreMutationSchema, type SaboreMutation } from "@/lib/sabore-mutations";
+import { miseMutationSchema, type MiseMutation } from "@/lib/mise-mutations";
 import {
   AccessError,
   canPerform,
@@ -26,7 +26,7 @@ type DbLot = {
   quantity: number | string;
 };
 
-function orderRow(order: SaboreMutation & { type: "create_order" }) {
+function orderRow(order: MiseMutation & { type: "create_order" }) {
   return {
     id: order.order.id,
     unit_id: order.order.unitId,
@@ -43,7 +43,7 @@ function orderRow(order: SaboreMutation & { type: "create_order" }) {
   };
 }
 
-function orderItemRows(orderId: string, items: Extract<SaboreMutation, { type: "append_order_items" }>["items"]) {
+function orderItemRows(orderId: string, items: Extract<MiseMutation, { type: "append_order_items" }>["items"]) {
   return items.map((item) => ({
     id: item.id,
     order_id: orderId,
@@ -55,7 +55,7 @@ function orderItemRows(orderId: string, items: Extract<SaboreMutation, { type: "
   }));
 }
 
-function movementRows(movements: Extract<SaboreMutation, { type: "create_order" }>["movements"]) {
+function movementRows(movements: Extract<MiseMutation, { type: "create_order" }>["movements"]) {
   return movements.map((movement) => ({
     id: movement.id,
     unit_id: movement.unitId,
@@ -69,7 +69,7 @@ function movementRows(movements: Extract<SaboreMutation, { type: "create_order" 
   }));
 }
 
-function paymentRow(payment: Extract<SaboreMutation, { type: "pay_order" }>["payment"], orderId: string) {
+function paymentRow(payment: Extract<MiseMutation, { type: "pay_order" }>["payment"], orderId: string) {
   return {
     id: payment.id,
     order_id: orderId,
@@ -80,7 +80,7 @@ function paymentRow(payment: Extract<SaboreMutation, { type: "pay_order" }>["pay
   };
 }
 
-function lotRow(lot: NonNullable<Extract<SaboreMutation, { type: "stock_adjustment" }>["lot"]>) {
+function lotRow(lot: NonNullable<Extract<MiseMutation, { type: "stock_adjustment" }>["lot"]>) {
   return {
     id: lot.id,
     ingredient_id: lot.ingredientId,
@@ -93,14 +93,14 @@ function lotRow(lot: NonNullable<Extract<SaboreMutation, { type: "stock_adjustme
 }
 
 function organizationSettingsRow(
-  organization: Extract<SaboreMutation, { type: "update_unit_settings" }>["organization"],
+  organization: Extract<MiseMutation, { type: "update_unit_settings" }>["organization"],
 ) {
   return {
     name: organization.name,
   };
 }
 
-function unitSettingsRow(unit: Extract<SaboreMutation, { type: "update_unit_settings" }>["unit"]) {
+function unitSettingsRow(unit: Extract<MiseMutation, { type: "update_unit_settings" }>["unit"]) {
   return {
     name: unit.name,
     city: unit.city,
@@ -108,7 +108,7 @@ function unitSettingsRow(unit: Extract<SaboreMutation, { type: "update_unit_sett
   };
 }
 
-function ingredientRow(ingredient: Extract<SaboreMutation, { type: "create_ingredient" }>["ingredient"]) {
+function ingredientRow(ingredient: Extract<MiseMutation, { type: "create_ingredient" }>["ingredient"]) {
   return {
     id: ingredient.id,
     unit_id: ingredient.unitId,
@@ -120,7 +120,7 @@ function ingredientRow(ingredient: Extract<SaboreMutation, { type: "create_ingre
 }
 
 function userProfileRow(
-  profile: Extract<SaboreMutation, { type: "create_user_profile" }>["profile"],
+  profile: Extract<MiseMutation, { type: "create_user_profile" }>["profile"],
   authUserId: string,
 ) {
   return {
@@ -133,7 +133,7 @@ function userProfileRow(
 }
 
 function deliveryAvailabilityRow(
-  availability: Extract<SaboreMutation, { type: "update_delivery_item_availability" }>["availability"],
+  availability: Extract<MiseMutation, { type: "update_delivery_item_availability" }>["availability"],
 ) {
   return {
     id: availability.id,
@@ -285,7 +285,7 @@ function requireDeliveryAccess(
 
 async function assertRecipeAccess(
   client: SupabaseClient,
-  mutation: Extract<SaboreMutation, { type: "create_recipe_item" }>,
+  mutation: Extract<MiseMutation, { type: "create_recipe_item" }>,
   profile: AuthenticatedProfile,
 ) {
   await assertRows(
@@ -308,7 +308,7 @@ async function assertRecipeAccess(
 
 async function authorizeMutation(
   client: SupabaseClient,
-  mutation: SaboreMutation,
+  mutation: MiseMutation,
   profile: AuthenticatedProfile,
 ) {
   if (!canPerform(profile.role, mutation.type)) {
@@ -508,7 +508,7 @@ async function authorizeMutation(
 
 async function insertMovements(
   client: SupabaseClient,
-  movements: Extract<SaboreMutation, { type: "create_order" }>["movements"],
+  movements: Extract<MiseMutation, { type: "create_order" }>["movements"],
 ) {
   if (movements.length === 0) return;
 
@@ -518,7 +518,7 @@ async function insertMovements(
 
 async function deductLotsForMovements(
   client: SupabaseClient,
-  movements: Extract<SaboreMutation, { type: "create_order" }>["movements"],
+  movements: Extract<MiseMutation, { type: "create_order" }>["movements"],
 ) {
   for (const movement of movements) {
     if (movement.quantity >= 0) continue;
@@ -550,7 +550,7 @@ async function deductLotsForMovements(
   }
 }
 
-async function handleMutation(client: SupabaseClient, mutation: SaboreMutation) {
+async function handleMutation(client: SupabaseClient, mutation: MiseMutation) {
   switch (mutation.type) {
     case "create_order": {
       await must("orders", client.from("orders").insert(orderRow(mutation)));
@@ -752,7 +752,7 @@ async function handleMutation(client: SupabaseClient, mutation: SaboreMutation) 
 }
 
 export async function POST(request: Request) {
-  const limited = await enforceRateLimit(request, apiRateLimit("sabore:mutations"));
+  const limited = await enforceRateLimit(request, apiRateLimit("mise:mutations"));
 
   if (limited) return limited;
 
@@ -768,7 +768,7 @@ export async function POST(request: Request) {
     throw error;
   }
 
-  const parsed = saboreMutationSchema.safeParse(payload);
+  const parsed = miseMutationSchema.safeParse(payload);
 
   if (!parsed.success) {
     return Response.json(
@@ -786,7 +786,7 @@ export async function POST(request: Request) {
 
     return Response.json({ ok: true });
   } catch (error) {
-    console.error("Sabore mutation failed", error);
+    console.error("Mise mutation failed", error);
     const status = error instanceof AccessError ? error.status : 500;
 
     return Response.json(

@@ -202,7 +202,7 @@ export interface WhatsAppTemplate {
   monthlyPrice?: number;
 }
 
-export interface SaboreData {
+export interface MiseData {
   organization: Organization;
   unit: RestaurantUnit;
   users: UserProfile[];

@@ -157,7 +157,7 @@ const deliveryAvailabilitySchema = z.object({
   updatedAt: textField(40),
 });
 
-export const saboreMutationSchema = z.discriminatedUnion("type", [
+export const miseMutationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("create_order"),
     order: orderSchema,
@@ -228,4 +228,4 @@ export const saboreMutationSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-export type SaboreMutation = z.infer<typeof saboreMutationSchema>;
+export type MiseMutation = z.infer<typeof miseMutationSchema>;

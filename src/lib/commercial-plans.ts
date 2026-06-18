@@ -84,8 +84,8 @@ export const corePlans: CommercialPlan[] = [
       "Baixa automatica de estoque por venda",
       "CMV real por produto",
       "Controle de lotes e validade",
-      "Delivery proprio dentro do Sabore",
-      "Pedidos feitos no Sabore baixam estoque automaticamente",
+      "Delivery proprio dentro do Mise",
+      "Pedidos feitos no Mise baixam estoque automaticamente",
     ],
     highlighted: true,
     features: [
@@ -111,12 +111,12 @@ export const addonPlans: CommercialAddon[] = [
     name: "Site Delivery Proprio",
     setup: "R$300 setup",
     price: "R$39,90/mes",
-    description: "Cardapio online para pedido proprio cair direto no Sabore.",
+    description: "Cardapio online para pedido proprio cair direto no Mise.",
     includes: [
       "Cardapio publico do estabelecimento",
       "Link para Instagram e WhatsApp",
       "Pedido direto pelo site",
-      "Pedido cai na tela Delivery do Sabore",
+      "Pedido cai na tela Delivery do Mise",
       "Taxa de entrega configuravel",
       "Pagamento na entrega ou Pix manual",
     ],
@@ -124,7 +124,7 @@ export const addonPlans: CommercialAddon[] = [
   {
     name: "Fiscal NFC-e",
     setup: "R$399 a R$699 setup",
-    price: "Sem mensalidade Sabore",
+    price: "Sem mensalidade Mise",
     description: "Integracao fiscal assistida sem encarecer o plano base.",
     includes: [
       "Configuracao com provedor fiscal parceiro",
@@ -132,7 +132,7 @@ export const addonPlans: CommercialAddon[] = [
       "Certificado digital, contador e SEFAZ por conta do restaurante",
       "Uso liberado somente apos checklist fiscal",
     ],
-    note: "O Sabore nao substitui contador nem assume dados fiscais do restaurante.",
+    note: "O Mise nao substitui contador nem assume dados fiscais do restaurante.",
   },
   {
     name: "iFood",
@@ -140,7 +140,7 @@ export const addonPlans: CommercialAddon[] = [
     price: "R$99,90/mes",
     description: "Pedidos automaticos do iFood quando houver integracao disponivel.",
     includes: [
-      "Pedido aparece no Delivery do Sabore",
+      "Pedido aparece no Delivery do Mise",
       "Origem do pedido identificada",
       "Mapeamento de itens externos",
       "Baixa de estoque quando o item estiver vinculado",
@@ -153,7 +153,7 @@ export const addonPlans: CommercialAddon[] = [
     price: "R$99,90/mes",
     description: "Pedidos automaticos do 99Food quando houver integracao disponivel.",
     includes: [
-      "Pedido aparece no Delivery do Sabore",
+      "Pedido aparece no Delivery do Mise",
       "Origem do pedido identificada",
       "Mapeamento de itens externos",
       "Baixa de estoque quando o item estiver vinculado",

@@ -16,7 +16,7 @@ import type {
   Product,
   RecipeItem,
   RestaurantUnit,
-  SaboreData,
+  MiseData,
   UserProfile,
   WhatsAppTemplate,
 } from "@/lib/types";
@@ -24,8 +24,8 @@ import { getSupabaseAdmin, getSupabaseDataClient } from "./server";
 
 type DbRow = Record<string, unknown>;
 
-export interface SaboreDataResult {
-  data: SaboreData;
+export interface MiseDataResult {
+  data: MiseData;
   source: "supabase" | "demo";
   message: string;
 }
@@ -275,7 +275,7 @@ function mapDeliveryAvailability(row: DbRow): DeliveryCatalogAvailability {
   };
 }
 
-function mapSaboreData({
+function mapMiseData({
   organizationRow,
   unit,
   userRows,
@@ -311,7 +311,7 @@ function mapSaboreData({
   cashRows: DbRow[];
   movementRows: DbRow[];
   templateRows: DbRow[];
-}): SaboreData {
+}): MiseData {
   const itemsByOrder = groupBy(orderItemRows, "order_id");
   const paymentsByOrder = groupBy(paymentRows, "order_id");
 
@@ -425,7 +425,7 @@ function mapSaboreData({
   };
 }
 
-export async function getSaboreDataForUnit(unitId: string): Promise<SaboreDataResult> {
+export async function getMiseDataForUnit(unitId: string): Promise<MiseDataResult> {
   const client = getSupabaseAdmin();
   const unitRows = await selectRowsEq(client, "restaurant_units", "id", unitId);
   const unit = unitRows[0];
@@ -482,7 +482,7 @@ export async function getSaboreDataForUnit(unitId: string): Promise<SaboreDataRe
     ]);
 
   return {
-    data: mapSaboreData({
+    data: mapMiseData({
       organizationRow,
       unit,
       userRows,
@@ -506,7 +506,7 @@ export async function getSaboreDataForUnit(unitId: string): Promise<SaboreDataRe
   };
 }
 
-export async function getSaboreData(): Promise<SaboreDataResult> {
+export async function getMiseData(): Promise<MiseDataResult> {
   const client = getSupabaseDataClient();
 
   if (!client) {
@@ -580,7 +580,7 @@ export async function getSaboreData(): Promise<SaboreDataResult> {
       "order_id",
       orderRows.map((row) => stringValue(row, "id")),
     );
-    const data: SaboreData = {
+    const data: MiseData = {
       organization: {
         id: stringValue(organizationRow, "id"),
         name: stringValue(organizationRow, "name"),

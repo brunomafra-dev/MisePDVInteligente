@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { BrandMark } from "@/components/brand-mark";
-import { SaboreApp } from "@/components/sabore-app";
+import { MiseApp } from "@/components/mise-app";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { Role, SaboreData } from "@/lib/types";
+import type { Role, MiseData } from "@/lib/types";
 
 type Profile = {
   id: string;
@@ -24,7 +24,7 @@ type Profile = {
 };
 
 type DataResponse = {
-  data: SaboreData;
+  data: MiseData;
   source: "supabase";
   message: string;
   profile: Profile;
@@ -58,12 +58,12 @@ function Field({
   );
 }
 
-export function SaboreAuthShell() {
+export function MiseAuthShell() {
   const supabase = getSupabaseBrowserClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [session, setSession] = useState<Session | null>(null);
-  const [data, setData] = useState<SaboreData | null>(null);
+  const [data, setData] = useState<MiseData | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState(() =>
@@ -77,7 +77,7 @@ export function SaboreAuthShell() {
     setError("");
 
     try {
-      const response = await fetch("/api/sabore/data", {
+      const response = await fetch("/api/mise/data", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const result = (await response.json().catch(() => null)) as
@@ -88,7 +88,7 @@ export function SaboreAuthShell() {
       if (!response.ok || !result || !("data" in result)) {
         const errorMessage = result && "error" in result ? result.error : undefined;
 
-        throw new Error(errorMessage ?? "Nao foi possivel carregar o Sabore");
+        throw new Error(errorMessage ?? "Nao foi possivel carregar o Mise");
       }
 
       setData(result.data);
@@ -100,7 +100,7 @@ export function SaboreAuthShell() {
       setError(
         loadError instanceof Error
           ? loadError.message
-          : "Nao foi possivel carregar o Sabore",
+          : "Nao foi possivel carregar o Mise",
       );
     } finally {
       setLoading(false);
@@ -171,7 +171,7 @@ export function SaboreAuthShell() {
               ? result.error
               : undefined;
 
-        setError(errorMessage ?? "Nao foi possivel entrar no Sabore");
+        setError(errorMessage ?? "Nao foi possivel entrar no Mise");
         return;
       }
 
@@ -191,7 +191,7 @@ export function SaboreAuthShell() {
       setError(
         signInError instanceof Error
           ? signInError.message
-          : "Nao foi possivel entrar no Sabore",
+          : "Nao foi possivel entrar no Mise",
       );
     } finally {
       setSubmitting(false);
@@ -207,7 +207,7 @@ export function SaboreAuthShell() {
 
   if (session && data && profile) {
     return (
-      <SaboreApp
+      <MiseApp
         accessToken={session.access_token}
         currentUser={{ name: profile.name, role: profile.role }}
         dataSource={{ source: "supabase", message }}
@@ -225,8 +225,10 @@ export function SaboreAuthShell() {
             <div className="mb-3 flex items-center gap-2">
               <BrandMark />
               <div>
-                <p className="text-sm font-semibold">Sabore</p>
-                <p className="text-xs text-muted-foreground">PDV inteligente</p>
+                <p className="text-sm font-semibold">Mise PDV Inteligente</p>
+                <p className="text-xs text-muted-foreground">
+                  Operação inteligente para restaurantes
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">

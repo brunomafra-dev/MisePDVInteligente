@@ -1,4 +1,4 @@
-# Sabore Legal Research Notes
+# Mise Legal Research Notes
 
 Research date: 2026-05-07.
 
@@ -7,7 +7,7 @@ This file is an internal engineering/product note, not a legal opinion. A Brazil
 ## Official LGPD/ANPD Sources Checked
 
 - LGPD, Law 13.709/2018, Planalto: definitions, legal bases, controller/operator roles, data subject rights, security and incident duties. Link: https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm
-- ANPD guide for controllers, operators and data protection officer: used to model the restaurant as controller and Sabore as operator for end-customer/order data, while Sabore remains controller for its own leads, site visitors and account contacts. Link: https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes/guia-orientativo-para-definicoes-dos-agentes-de-tratamento-de-dados-pessoais-e-do-encarregado
+- ANPD guide for controllers, operators and data protection officer: used to model the restaurant as controller and Mise as operator for end-customer/order data, while Mise remains controller for its own leads, site visitors and account contacts. Link: https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes/guia-orientativo-para-definicoes-dos-agentes-de-tratamento-de-dados-pessoais-e-do-encarregado
 - ANPD cookies guide: used to separate necessary cookies from analytics/marketing cookies and to avoid non-necessary cookies before a preference/consent flow exists. Link: https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes/guia-orientativo-cookies-e-protecao-de-dados-pessoais.pdf/view
 - ANPD incident communication regulation notice: used to add incident handling language and recordkeeping awareness. Link: https://www.gov.br/anpd/pt-br/assuntos/noticias/anpd-aprova-o-regulamento-de-comunicacao-de-incidente-de-seguranca
 
@@ -20,7 +20,7 @@ This file is an internal engineering/product note, not a legal opinion. A Brazil
 - Suflex Privacy Policy: clearly treats the contractor as controller for some data inserted into the application and Suflex as responsible for storage/processing tied to the service. Link: https://suflex.com.br/wp-content/uploads/2025/08/POLITICA-DE-PRIVACIDADE-SUFLEX.pdf
 - Zig legal hub: good example of separating privacy, app terms, payment/consumption terms and software license by product/country. Link: https://zig.fun/termos-e-politicas/
 
-## Product Decisions Applied To Sabore
+## Product Decisions Applied To Mise
 
 - Public legal routes:
   - `/site`
@@ -29,10 +29,10 @@ This file is an internal engineering/product note, not a legal opinion. A Brazil
   - `/politica-de-privacidade`
   - `/politica-de-cookies`
   - `/acordo-de-tratamento-de-dados`
-- Sabore legal model:
-  - Sabore as controller for site visitors, leads, account admins, commercial contact and its own support/security data.
+- Mise legal model:
+  - Mise as controller for site visitors, leads, account admins, commercial contact and its own support/security data.
   - Restaurant as controller for end-customer order/delivery/WhatsApp data.
-  - Sabore as operator for restaurant-controlled data processed inside the SaaS.
+  - Mise as operator for restaurant-controlled data processed inside the SaaS.
 - High-risk clauses included:
   - Fiscal/NFC-e responsibility remains with the restaurant and its accountant.
   - Third-party integrations are subject to provider rules, costs and uptime.

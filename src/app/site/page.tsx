@@ -19,9 +19,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { addonPlans, corePlans } from "@/lib/commercial-plans";
 
 export const metadata: Metadata = {
-  title: "Site | Sabore",
+  title: "Site | Mise",
   description:
-    "Landing page do Sabore com planos, produto, funcoes, suporte e documentos legais.",
+    "Landing page do Mise com planos, produto, funcoes, suporte e documentos legais.",
 };
 
 const featureCards = [
@@ -38,7 +38,7 @@ const featureCards = [
   {
     icon: Truck,
     title: "Delivery proprio",
-    text: "Pedido proprio dentro do Sabore, com base pronta para site de delivery e taxa configuravel.",
+    text: "Pedido proprio dentro do Mise, com base pronta para site de delivery e taxa configuravel.",
   },
   {
     icon: ChefHat,
@@ -71,7 +71,7 @@ const functionBands = [
   {
     eyebrow: "Operacao",
     title: "Do pedido ate a conta sem resquicio entre telas",
-    text: "O Sabore nasceu para o restaurante que quer parar de se adaptar ao sistema. Atendimento, mesas, balcao e delivery seguem a logica real da casa.",
+    text: "O Mise nasceu para o restaurante que quer parar de se adaptar ao sistema. Atendimento, mesas, balcao e delivery seguem a logica real da casa.",
     bullets: [
       "Atendimento para relancar itens em mesas ja abertas",
       "Mesas livres, em consumo e em fechamento",
@@ -81,7 +81,7 @@ const functionBands = [
   {
     eyebrow: "Cozinha e estoque",
     title: "Controle de producao e insumo no mesmo produto",
-    text: "Nao adianta vender mais e perder na cozinha. A estrutura do Sabore conecta pedido, ficha tecnica, baixa de estoque, validade e divergencia.",
+    text: "Nao adianta vender mais e perder na cozinha. A estrutura do Mise conecta pedido, ficha tecnica, baixa de estoque, validade e divergencia.",
     bullets: [
       "Baixa automatica por receita",
       "Lotes por fornecedor, data e validade",
@@ -108,9 +108,9 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <BrandMark />
             <div>
-              <p className="text-sm font-semibold">Sabore</p>
+              <p className="text-sm font-semibold">Mise PDV Inteligente</p>
               <p className="text-xs text-muted-foreground">
-                PDV inteligente para restaurantes
+                Operação inteligente para restaurantes
               </p>
             </div>
           </div>
@@ -152,13 +152,14 @@ export default function Home() {
                 <Badge variant="warning">A partir de R$59,90/mes</Badge>
               </div>
               <h1 className="mt-5 max-w-[12ch] text-4xl font-semibold leading-none tracking-tight sm:text-5xl">
-                Mais controle na operacao. Menos perda na cozinha.
+                Mise PDV Inteligente
               </h1>
               <p className="mt-5 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
-                O Sabore e um sistema para restaurantes, pizzarias e lanchonetes que
-                precisam vender, produzir, controlar insumo e entender CMV sem cair
-                num software pesado demais para a rotina. O fiscal, marketplaces e
-                WhatsApp entram como modulos opcionais quando fizer sentido.
+                Operação inteligente para restaurantes, pizzarias e lanchonetes
+                que precisam vender, produzir, controlar insumo e entender CMV
+                sem cair num software pesado demais para a rotina. O fiscal,
+                marketplaces e WhatsApp entram como modulos opcionais quando
+                fizer sentido.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link href="/">
@@ -184,8 +185,8 @@ export default function Home() {
           <div className="relative">
             <div className="rounded-[28px] border border-[rgba(18,45,34,0.12)] bg-white/78 p-3 shadow-[0_35px_80px_-55px_rgba(15,23,42,0.5)] backdrop-blur">
               <Image
-                src="/sabore-preview.png"
-                alt="Preview do painel Sabore"
+                src="/mise-preview.png"
+                alt="Preview do painel Mise"
                 width={1280}
                 height={900}
                 className="w-full rounded-[22px] border border-border object-cover"
@@ -203,7 +204,7 @@ export default function Home() {
               Produto modular, mas pensado como uma operacao unica
             </h2>
             <p className="mt-3 text-base leading-7 text-muted-foreground">
-              Em vez de vender um monte de tela solta, o Sabore conecta atendimento,
+              Em vez de vender um monte de tela solta, o Mise conecta atendimento,
               producao, estoque, fiscal e comunicacao como partes do mesmo fluxo.
             </p>
           </div>
@@ -253,7 +254,7 @@ export default function Home() {
       <section className="border-y border-border/60 bg-white/72" id="planos">
         <div className="mx-auto w-full max-w-[1180px] px-5 py-12 sm:px-8">
           <div className="max-w-3xl">
-            <p className="text-sm font-medium uppercase text-primary">Planos Sabore</p>
+            <p className="text-sm font-medium uppercase text-primary">Planos Mise</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight">
               Entrada barata, modulos honestos e fiscal sem surpresa
             </h2>
@@ -370,7 +371,7 @@ export default function Home() {
 
       <footer className="border-t border-border/60 bg-white/80">
         <div className="mx-auto flex w-full max-w-[1180px] flex-wrap items-center justify-between gap-4 px-5 py-7 text-sm text-muted-foreground sm:px-8">
-          <p>Sabore PDV Inteligente. Minutas legais em revisao.</p>
+          <p>Mise PDV Inteligente. Minutas legais em revisao.</p>
           <nav className="flex flex-wrap gap-3">
             <Link className="hover:text-foreground" href="/termos-de-uso">
               Termos

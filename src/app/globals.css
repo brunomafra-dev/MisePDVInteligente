@@ -65,7 +65,7 @@ button:disabled {
   cursor: not-allowed;
 }
 
-.sabore-print-root {
+.mise-print-root {
   display: none;
 }
 
@@ -80,11 +80,11 @@ button:disabled {
     color: black;
   }
 
-  .sabore-screen {
+  .mise-screen {
     display: none !important;
   }
 
-  .sabore-print-root {
+  .mise-print-root {
     display: block;
   }
 

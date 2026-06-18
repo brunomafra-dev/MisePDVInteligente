@@ -1,17 +1,17 @@
 import { apiRateLimit, enforceRateLimit } from "@/lib/security/rate-limit";
 import { AccessError, getAuthenticatedProfile } from "@/lib/supabase/access";
-import { getSaboreDataForUnit } from "@/lib/supabase/sabore-data";
+import { getMiseDataForUnit } from "@/lib/supabase/mise-data";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const limited = await enforceRateLimit(request, apiRateLimit("sabore:data"));
+  const limited = await enforceRateLimit(request, apiRateLimit("mise:data"));
 
   if (limited) return limited;
 
   try {
     const profile = await getAuthenticatedProfile(request);
-    const result = await getSaboreDataForUnit(profile.unitId);
+    const result = await getMiseDataForUnit(profile.unitId);
 
     return Response.json({
       ...result,
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
         error:
           error instanceof Error
             ? error.message
-            : "Nao foi possivel carregar os dados do Sabore",
+            : "Nao foi possivel carregar os dados do Mise",
       },
       { status },
     );

@@ -1,6 +1,6 @@
-# Sabore Architecture
+# Mise Architecture
 
-Sabore is a web-first restaurant operating system for local pilots in Maceio.
+Mise is a web-first restaurant operating system for local pilots in Maceio.
 
 ## V1 Modules
 
@@ -15,7 +15,7 @@ Sabore is a web-first restaurant operating system for local pilots in Maceio.
 
 ## Routing
 
-- `/`: authenticated Sabore app.
+- `/`: authenticated Mise app.
 - `/site`: public landing page.
 - `/suporte`: public support page and support boundaries.
 - `/termos-de-uso`, `/politica-de-privacidade`, `/politica-de-cookies`, `/acordo-de-tratamento-de-dados`: public legal drafts for pre-launch review.
@@ -32,7 +32,7 @@ Organizations store `logo_url`, `plan_code` and `plan_price`. The code-defined f
 - Essencial: R$59.90/month.
 - Operacao: R$89.90/month.
 - Site Delivery Proprio: R$300 setup + R$39.90/month.
-- Fiscal NFC-e: R$399-699 setup, no Sabore fiscal monthly fee; fiscal API, certificate, CSC and accounting are paid by the restaurant or transparently passed through.
+- Fiscal NFC-e: R$399-699 setup, no Mise fiscal monthly fee; fiscal API, certificate, CSC and accounting are paid by the restaurant or transparently passed through.
 - iFood and 99Food: R$299 setup + R$99.90/month each when partner/API access is available.
 - WhatsApp Status: R$29.90/month.
 - WhatsApp AI Agent: R$399 setup + R$99.90/month, with Meta/volume costs possibly passed through.

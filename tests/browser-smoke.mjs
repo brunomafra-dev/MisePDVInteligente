@@ -2,10 +2,10 @@ import { chromium } from "playwright";
 import fs from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 
-const baseUrl = process.env.SABORE_BASE_URL ?? "http://localhost:3000";
+const baseUrl = process.env.MISE_BASE_URL ?? "http://localhost:3000";
 const smokeStartedAt = new Date(Date.now() - 5000).toISOString();
-const smokeEmail = `sabore-smoke-${Date.now()}@example.com`;
-const smokePassword = `Sabore-${Date.now()}!`;
+const smokeEmail = `Mise-smoke-${Date.now()}@example.com`;
+const smokePassword = `Mise-${Date.now()}!`;
 let smokeUserId = null;
 
 function readEnvFile() {
@@ -173,7 +173,7 @@ async function verifyDesktop(browser) {
     .count();
   const buttons = await page.locator("button, a").count();
 
-  await page.screenshot({ path: ".next/sabore-landing.png", fullPage: true });
+  await page.screenshot({ path: ".next/mise-landing.png", fullPage: true });
   await page.close();
 
   return { textLength, overlay, buttons, callToAction, errors };
@@ -199,7 +199,7 @@ async function verifyMobile(browser) {
 
   const initialAppText = await page.locator("body").innerText();
   const planBadgeUsesName =
-    initialAppText.includes("Sabore - PDV Inteligente") &&
+    initialAppText.includes("Mise PDV Inteligente") &&
     /(?:Essencial|Operacao)/.test(initialAppText) &&
     !initialAppText.includes("Plano -") &&
     !initialAppText.includes("Essencial R$");
@@ -342,7 +342,7 @@ async function verifyMobile(browser) {
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
   );
 
-  await page.screenshot({ path: ".next/sabore-mobile.png", fullPage: true });
+  await page.screenshot({ path: ".next/mise-mobile.png", fullPage: true });
   await page.close();
 
   return {
@@ -436,7 +436,7 @@ async function verifyPublicDelivery(browser) {
     .locator("[data-nextjs-dialog], .vite-error-overlay, #webpack-dev-server-client-overlay")
     .count();
 
-  await page.screenshot({ path: ".next/sabore-delivery-mobile.png", fullPage: true });
+  await page.screenshot({ path: ".next/mise-delivery-mobile.png", fullPage: true });
   await page.close();
 
   return {

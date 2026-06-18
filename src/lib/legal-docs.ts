@@ -24,32 +24,32 @@ const reviewNotice =
   "Minuta operacional para revisao juridica. Antes de publicar em producao, preencher razao social, CNPJ, endereco, e-mail oficial de privacidade, foro e dados do encarregado.";
 
 export const termsOfUse: LegalDocument = {
-  title: "Termos de Uso do Sabore",
+  title: "Termos de Uso do Mise",
   eyebrow: "Contrato de licenca SaaS",
   summary:
-    "Regras para uso do Sabore por restaurantes, pizzarias, lanchonetes, food trucks e outros negocios de alimentacao.",
+    "Regras para uso do Mise por restaurantes, pizzarias, lanchonetes, food trucks e outros negocios de alimentacao.",
   lastUpdated,
   reviewNotice,
   sections: [
     {
       title: "1. Partes e aceite",
       body: [
-        "Estes Termos regulam o uso do Sabore PDV Inteligente, produto mantido por [RAZAO SOCIAL A DEFINIR], [CNPJ A DEFINIR], com sede em [ENDERECO A DEFINIR].",
-        "Ao criar conta, acessar a demonstracao, contratar plano, utilizar o sistema ou permitir que colaboradores usem o Sabore, o contratante declara que leu, entendeu e aceitou estes Termos.",
+        "Estes Termos regulam o uso do Mise PDV Inteligente, produto mantido por [RAZAO SOCIAL A DEFINIR], [CNPJ A DEFINIR], com sede em [ENDERECO A DEFINIR].",
+        "Ao criar conta, acessar a demonstracao, contratar plano, utilizar o sistema ou permitir que colaboradores usem o Mise, o contratante declara que leu, entendeu e aceitou estes Termos.",
         "O contratante deve ter poderes para representar o restaurante, unidade, marca, MEI, empresa ou pessoa juridica que utilizara o sistema.",
       ],
     },
     {
       title: "2. Objeto do servico",
       body: [
-        "O Sabore e uma plataforma SaaS online para apoio a operacao de servicos de alimentacao, incluindo PDV, mesas, comandas, delivery proprio, cozinha, estoque, ficha tecnica, relatorios, caixa, comunicacoes e integracoes.",
+        "O Mise e uma plataforma SaaS online para apoio a operacao de servicos de alimentacao, incluindo PDV, mesas, comandas, delivery proprio, cozinha, estoque, ficha tecnica, relatorios, caixa, comunicacoes e integracoes.",
         "As funcionalidades podem variar conforme o plano contratado, estagio do produto, configuracao da unidade e disponibilidade de terceiros integrados.",
       ],
     },
     {
       title: "3. Licenca de uso",
       body: [
-        "O contratante recebe uma licenca limitada, temporaria, nao exclusiva, revogavel e intransferivel para usar o Sabore durante a vigencia da contratacao.",
+        "O contratante recebe uma licenca limitada, temporaria, nao exclusiva, revogavel e intransferivel para usar o Mise durante a vigencia da contratacao.",
         "Nenhum direito de propriedade intelectual, codigo-fonte, marca, layout, banco de dados estrutural, metodo, tecnologia ou documentacao tecnica e transferido ao contratante.",
       ],
     },
@@ -62,7 +62,7 @@ export const termsOfUse: LegalDocument = {
       bullets: [
         "Administradores devem revisar cargos e permissoes periodicamente.",
         "Cada usuario deve acessar somente as funcoes necessarias para sua atividade.",
-        "Suspeitas de acesso indevido devem ser comunicadas imediatamente ao Sabore.",
+        "Suspeitas de acesso indevido devem ser comunicadas imediatamente ao Mise.",
       ],
     },
     {
@@ -71,21 +71,21 @@ export const termsOfUse: LegalDocument = {
         "Os valores, modulos, limites e condicoes comerciais serao informados na proposta, pagina de planos, contrato comercial ou aceite eletronico.",
         "Recursos como KDS/cozinha, integracoes, WhatsApp, fiscal, unidades adicionais, implantacao local e treinamento podem ser cobrados separadamente.",
         "Custos externos de certificados digitais, API fiscal, Mercado Pago, Meta/WhatsApp, provedores de internet, equipamentos, impressoras e meios de pagamento nao estao incluidos, salvo previsao expressa em proposta.",
-        "Em caso de inadimplencia, fraude, uso abusivo ou violacao destes Termos, o Sabore podera limitar, suspender ou cancelar o acesso, preservando os direitos de defesa e comunicacao quando aplicavel.",
+        "Em caso de inadimplencia, fraude, uso abusivo ou violacao destes Termos, o Mise podera limitar, suspender ou cancelar o acesso, preservando os direitos de defesa e comunicacao quando aplicavel.",
       ],
     },
     {
       title: "6. Responsabilidade operacional do restaurante",
       body: [
-        "O Sabore e ferramenta de apoio operacional. O contratante continua responsavel pela gestao do negocio, precos, cardapio, producao, atendimento, entregas, qualidade dos alimentos, estoque fisico, seguranca alimentar, treinamento de equipe e conferencia das informacoes lancadas.",
+        "O Mise e ferramenta de apoio operacional. O contratante continua responsavel pela gestao do negocio, precos, cardapio, producao, atendimento, entregas, qualidade dos alimentos, estoque fisico, seguranca alimentar, treinamento de equipe e conferencia das informacoes lancadas.",
         "Relatorios, indicadores de CMV, alertas de validade e baixas de estoque dependem da qualidade dos cadastros, fichas tecnicas, lancamentos e contagens informadas pelo proprio contratante.",
       ],
     },
     {
       title: "7. Aviso fiscal, NFC-e e documentos nao fiscais",
       body: [
-        "O Sabore podera apoiar a emissao de NFC-e por provedor externo, bem como gerar contas, comandas, recibos, relatorios e documentos operacionais nao fiscais.",
-        "O Sabore nao substitui contador, consultoria fiscal, escritorio contabil, SEFAZ, prefeitura, certificado digital ou provedor fiscal.",
+        "O Mise podera apoiar a emissao de NFC-e por provedor externo, bem como gerar contas, comandas, recibos, relatorios e documentos operacionais nao fiscais.",
+        "O Mise nao substitui contador, consultoria fiscal, escritorio contabil, SEFAZ, prefeitura, certificado digital ou provedor fiscal.",
         "O contratante e exclusivamente responsavel por credenciamento, certificado digital, CSC/token, inscricao estadual, regime tributario, aliquotas, CFOP, NCM, regras de cancelamento, contingencia, guarda de XML/DANFE, recolhimento de tributos e cumprimento de obrigacoes fiscais, tributarias e acessorias.",
       ],
     },
@@ -93,7 +93,7 @@ export const termsOfUse: LegalDocument = {
       title: "8. Integracoes e terceiros",
       body: [
         "O funcionamento de Mercado Pago, WhatsApp/Meta, Focus NFe, Supabase, Vercel, provedores de internet, gateways, APIs de delivery e outros terceiros depende das regras, disponibilidade, taxas e politicas desses fornecedores.",
-        "Falhas, indisponibilidades, bloqueios, mudancas de preco, alteracoes de API ou suspensoes causadas por terceiros nao sao controladas pelo Sabore.",
+        "Falhas, indisponibilidades, bloqueios, mudancas de preco, alteracoes de API ou suspensoes causadas por terceiros nao sao controladas pelo Mise.",
       ],
     },
     {
@@ -106,14 +106,14 @@ export const termsOfUse: LegalDocument = {
     {
       title: "10. Disponibilidade, manutencao e internet",
       body: [
-        "A versao atual do Sabore e web e online. Queda de internet, instabilidade de navegador, equipamento local, impressora, roteador, provedor ou energia podem afetar a operacao.",
-        "O Sabore podera realizar manutencoes, atualizacoes e melhorias. Nao ha garantia de operacao ininterrupta ou livre de erros, salvo SLA especifico contratado por escrito.",
+        "A versao atual do Mise e web e online. Queda de internet, instabilidade de navegador, equipamento local, impressora, roteador, provedor ou energia podem afetar a operacao.",
+        "O Mise podera realizar manutencoes, atualizacoes e melhorias. Nao ha garantia de operacao ininterrupta ou livre de erros, salvo SLA especifico contratado por escrito.",
       ],
     },
     {
       title: "11. Uso proibido",
       bullets: [
-        "Usar o Sabore para atividade ilegal, fraude, envio abusivo de mensagens ou violacao de direitos de terceiros.",
+        "Usar o Mise para atividade ilegal, fraude, envio abusivo de mensagens ou violacao de direitos de terceiros.",
         "Inserir dados sensiveis desnecessarios, dados falsos, conteudo ofensivo, malware ou informacoes que nao tenham relacao com a operacao contratada.",
         "Tentar burlar limites, explorar vulnerabilidades, fazer engenharia reversa, copiar telas, clonar marca, revender acesso sem autorizacao ou prejudicar a infraestrutura.",
       ],
@@ -122,7 +122,7 @@ export const termsOfUse: LegalDocument = {
       title: "12. Dados, privacidade e seguranca",
       body: [
         "O tratamento de dados pessoais segue a Politica de Privacidade, a Politica de Cookies e, quando aplicavel, o Acordo de Tratamento de Dados.",
-        "O Sabore adotara medidas tecnicas e administrativas razoaveis para proteger dados, incluindo controle de acesso, segregacao por unidade, logs, protecao de credenciais e revisoes de seguranca.",
+        "O Mise adotara medidas tecnicas e administrativas razoaveis para proteger dados, incluindo controle de acesso, segregacao por unidade, logs, protecao de credenciais e revisoes de seguranca.",
         "O contratante deve manter usuarios, senhas, dispositivos, rede local e permissoes sob controle adequado.",
       ],
     },
@@ -136,15 +136,15 @@ export const termsOfUse: LegalDocument = {
     {
       title: "14. Limitacao de responsabilidade",
       body: [
-        "Na maxima extensao permitida pela lei, o Sabore nao sera responsavel por lucros cessantes, perda de receita, perda de clientela, dano indireto, consequencial, punitivo ou prejuizo causado por uso incorreto, cadastro incorreto, falha de terceiros, ausencia de internet ou decisao operacional tomada exclusivamente pelo contratante.",
-        "Eventual responsabilidade direta do Sabore, quando comprovada, ficara limitada ao valor efetivamente pago pelo contratante nos ultimos 3 meses, salvo disposicao legal obrigatoria em sentido contrario.",
+        "Na maxima extensao permitida pela lei, o Mise nao sera responsavel por lucros cessantes, perda de receita, perda de clientela, dano indireto, consequencial, punitivo ou prejuizo causado por uso incorreto, cadastro incorreto, falha de terceiros, ausencia de internet ou decisao operacional tomada exclusivamente pelo contratante.",
+        "Eventual responsabilidade direta do Mise, quando comprovada, ficara limitada ao valor efetivamente pago pelo contratante nos ultimos 3 meses, salvo disposicao legal obrigatoria em sentido contrario.",
       ],
     },
     {
       title: "15. Alteracoes dos Termos",
       body: [
         "Estes Termos poderao ser atualizados para refletir mudancas legais, tecnicas, comerciais ou de produto. A data de atualizacao sera indicada nesta pagina.",
-        "Quando a alteracao for relevante, o Sabore podera comunicar por e-mail, aviso no sistema ou outro canal cadastrado.",
+        "Quando a alteracao for relevante, o Mise podera comunicar por e-mail, aviso no sistema ou outro canal cadastrado.",
       ],
     },
     {
@@ -163,19 +163,19 @@ export const termsOfUse: LegalDocument = {
 };
 
 export const privacyPolicy: LegalDocument = {
-  title: "Politica de Privacidade do Sabore",
+  title: "Politica de Privacidade do Mise",
   eyebrow: "LGPD e protecao de dados",
   summary:
-    "Como o Sabore coleta, usa, armazena, compartilha e protege dados pessoais no site, no app e nas integracoes.",
+    "Como o Mise coleta, usa, armazena, compartilha e protege dados pessoais no site, no app e nas integracoes.",
   lastUpdated,
   reviewNotice,
   sections: [
     {
       title: "1. Quem somos",
       body: [
-        "Esta Politica se aplica ao Sabore PDV Inteligente, produto mantido por [RAZAO SOCIAL A DEFINIR], [CNPJ A DEFINIR], com contato de privacidade em [EMAIL DE PRIVACIDADE A DEFINIR].",
-        "Para dados de visitantes do site, leads, usuarios administrativos e contatos comerciais diretos, o Sabore atua em regra como controlador.",
-        "Para dados de clientes finais do restaurante inseridos pelo contratante no sistema, como nome, telefone, endereco de entrega e historico de pedidos, o restaurante e em regra o controlador e o Sabore atua como operador, tratando os dados conforme instrucoes do restaurante e para prestar o servico contratado.",
+        "Esta Politica se aplica ao Mise PDV Inteligente, produto mantido por [RAZAO SOCIAL A DEFINIR], [CNPJ A DEFINIR], com contato de privacidade em [EMAIL DE PRIVACIDADE A DEFINIR].",
+        "Para dados de visitantes do site, leads, usuarios administrativos e contatos comerciais diretos, o Mise atua em regra como controlador.",
+        "Para dados de clientes finais do restaurante inseridos pelo contratante no sistema, como nome, telefone, endereco de entrega e historico de pedidos, o restaurante e em regra o controlador e o Mise atua como operador, tratando os dados conforme instrucoes do restaurante e para prestar o servico contratado.",
       ],
     },
     {
@@ -196,7 +196,7 @@ export const privacyPolicy: LegalDocument = {
     {
       title: "3. Dados sensiveis",
       body: [
-        "O Sabore nao foi desenhado para tratar dados pessoais sensiveis. O contratante deve evitar inserir informacoes sobre saude, biometria, religiao, opiniao politica, vida sexual, origem racial ou outros dados sensiveis, salvo quando houver base legal clara e necessidade operacional real.",
+        "O Mise nao foi desenhado para tratar dados pessoais sensiveis. O contratante deve evitar inserir informacoes sobre saude, biometria, religiao, opiniao politica, vida sexual, origem racial ou outros dados sensiveis, salvo quando houver base legal clara e necessidade operacional real.",
       ],
     },
     {
@@ -208,7 +208,7 @@ export const privacyPolicy: LegalDocument = {
           ["Processar pedidos, mesas, estoque, caixa, cozinha e relatorios", "Execucao de contrato e legitimo interesse operacional."],
           ["Emitir ou apoiar documentos fiscais por provedor externo", "Cumprimento de obrigacao legal/regulatoria e execucao de contrato."],
           ["Enviar notificacoes operacionais de pedido por WhatsApp/e-mail", "Execucao de contrato, legitimo interesse ou consentimento, conforme o caso."],
-          ["Enviar marketing, campanhas e materiais comerciais do Sabore", "Consentimento ou legitimo interesse, com opcao de descadastro quando aplicavel."],
+          ["Enviar marketing, campanhas e materiais comerciais do Mise", "Consentimento ou legitimo interesse, com opcao de descadastro quando aplicavel."],
           ["Prevenir fraude, proteger contas e auditar seguranca", "Legitimo interesse, cumprimento legal e exercicio regular de direitos."],
           ["Cumprir ordens legais, fiscais, judiciais ou reguladoras", "Cumprimento de obrigacao legal/regulatoria."],
         ],
@@ -234,7 +234,7 @@ export const privacyPolicy: LegalDocument = {
     {
       title: "6. Transferencia internacional",
       body: [
-        "Alguns provedores de infraestrutura e integracao podem armazenar ou processar dados fora do Brasil. Quando isso ocorrer, o Sabore buscara utilizar fornecedores com medidas contratuais, tecnicas e organizacionais adequadas ao nivel de risco e as exigencias da LGPD.",
+        "Alguns provedores de infraestrutura e integracao podem armazenar ou processar dados fora do Brasil. Quando isso ocorrer, o Mise buscara utilizar fornecedores com medidas contratuais, tecnicas e organizacionais adequadas ao nivel de risco e as exigencias da LGPD.",
       ],
     },
     {
@@ -254,7 +254,7 @@ export const privacyPolicy: LegalDocument = {
       title: "8. Direitos dos titulares",
       body: [
         "Nos termos da LGPD, titulares podem solicitar confirmacao de tratamento, acesso, correcao, anonimizacao, bloqueio ou eliminacao de dados desnecessarios, portabilidade, informacao sobre compartilhamentos, revisao de decisoes automatizadas quando aplicavel, revogacao de consentimento e oposicao a tratamento irregular.",
-        "Quando o pedido envolver dados de cliente final de um restaurante, o Sabore podera direcionar o pedido ao restaurante controlador ou atuar em apoio ao atendimento, conforme o caso.",
+        "Quando o pedido envolver dados de cliente final de um restaurante, o Mise podera direcionar o pedido ao restaurante controlador ou atuar em apoio ao atendimento, conforme o caso.",
       ],
     },
     {
@@ -266,14 +266,14 @@ export const privacyPolicy: LegalDocument = {
     {
       title: "10. Seguranca da informacao",
       body: [
-        "O Sabore adota medidas tecnicas e administrativas proporcionais ao porte e ao risco, incluindo autenticacao, segregacao por unidade, controles de acesso, variaveis de ambiente para segredos, validacao de payloads, rate limiting e revisoes de seguranca.",
-        "Nenhuma plataforma e absolutamente imune a incidentes. Caso ocorra incidente que possa gerar risco ou dano relevante, o Sabore avaliara o impacto, adotara medidas de mitigacao e comunicara os envolvidos conforme a LGPD e normas da ANPD.",
+        "O Mise adota medidas tecnicas e administrativas proporcionais ao porte e ao risco, incluindo autenticacao, segregacao por unidade, controles de acesso, variaveis de ambiente para segredos, validacao de payloads, rate limiting e revisoes de seguranca.",
+        "Nenhuma plataforma e absolutamente imune a incidentes. Caso ocorra incidente que possa gerar risco ou dano relevante, o Mise avaliara o impacto, adotara medidas de mitigacao e comunicara os envolvidos conforme a LGPD e normas da ANPD.",
       ],
     },
     {
       title: "11. Criancas e adolescentes",
       body: [
-        "O Sabore nao e direcionado a criancas. O contratante deve evitar cadastrar dados de criancas ou adolescentes no sistema, salvo quando indispensavel para a operacao e amparado por base legal adequada.",
+        "O Mise nao e direcionado a criancas. O contratante deve evitar cadastrar dados de criancas ou adolescentes no sistema, salvo quando indispensavel para a operacao e amparado por base legal adequada.",
       ],
     },
     {
@@ -292,10 +292,10 @@ export const privacyPolicy: LegalDocument = {
 };
 
 export const cookiePolicy: LegalDocument = {
-  title: "Politica de Cookies do Sabore",
+  title: "Politica de Cookies do Mise",
   eyebrow: "Cookies e tecnologias similares",
   summary:
-    "Quais cookies e tecnologias semelhantes podem ser usados no site e no app Sabore.",
+    "Quais cookies e tecnologias semelhantes podem ser usados no site e no app Mise.",
   lastUpdated,
   reviewNotice,
   sections: [
@@ -333,7 +333,7 @@ export const cookiePolicy: LegalDocument = {
     {
       title: "5. Como gerenciar",
       body: [
-        "O usuario pode bloquear ou apagar cookies pelo navegador. O bloqueio de cookies necessarios pode impedir login, seguranca ou uso correto do Sabore.",
+        "O usuario pode bloquear ou apagar cookies pelo navegador. O bloqueio de cookies necessarios pode impedir login, seguranca ou uso correto do Mise.",
         "Quando houver central de preferencias, ela permitira aceitar, rejeitar ou ajustar cookies nao necessarios.",
       ],
     },
@@ -356,15 +356,15 @@ export const dataProcessingAgreement: LegalDocument = {
   title: "Acordo de Tratamento de Dados",
   eyebrow: "Controlador e operador",
   summary:
-    "Anexo LGPD para restaurantes que usam o Sabore para tratar dados de clientes finais, colaboradores e operacao.",
+    "Anexo LGPD para restaurantes que usam o Mise para tratar dados de clientes finais, colaboradores e operacao.",
   lastUpdated,
   reviewNotice,
   sections: [
     {
       title: "1. Papel das partes",
       body: [
-        "Para dados pessoais de clientes finais, colaboradores e contatos inseridos pelo restaurante no Sabore, o restaurante contratante atua em regra como controlador e o Sabore atua como operador.",
-        "Para dados de leads, visitantes do site, administradores da conta e contatos comerciais diretos do Sabore, o Sabore pode atuar como controlador independente.",
+        "Para dados pessoais de clientes finais, colaboradores e contatos inseridos pelo restaurante no Mise, o restaurante contratante atua em regra como controlador e o Mise atua como operador.",
+        "Para dados de leads, visitantes do site, administradores da conta e contatos comerciais diretos do Mise, o Mise pode atuar como controlador independente.",
       ],
     },
     {
@@ -389,12 +389,12 @@ export const dataProcessingAgreement: LegalDocument = {
     {
       title: "4. Instrucoes do controlador",
       body: [
-        "O Sabore tratara dados pessoais conforme as instrucoes documentadas do restaurante, estes Termos, a Politica de Privacidade, configuracoes do sistema e exigencias legais aplicaveis.",
-        "Caso uma instrucao pareca violar a LGPD ou gere risco relevante, o Sabore podera alertar o contratante, recusar execucao ou limitar a funcionalidade ate esclarecimento.",
+        "O Mise tratara dados pessoais conforme as instrucoes documentadas do restaurante, estes Termos, a Politica de Privacidade, configuracoes do sistema e exigencias legais aplicaveis.",
+        "Caso uma instrucao pareca violar a LGPD ou gere risco relevante, o Mise podera alertar o contratante, recusar execucao ou limitar a funcionalidade ate esclarecimento.",
       ],
     },
     {
-      title: "5. Obrigacoes do Sabore como operador",
+      title: "5. Obrigacoes do Mise como operador",
       bullets: [
         "Tratar dados apenas para prestar o servico contratado e finalidades compativeis.",
         "Adotar medidas de seguranca proporcionais ao risco e ao porte da operacao.",
@@ -419,14 +419,14 @@ export const dataProcessingAgreement: LegalDocument = {
       title: "7. Suboperadores",
       body: [
         "O contratante autoriza o uso de suboperadores necessarios ao servico, como provedores de hospedagem, banco de dados, autenticacao, pagamentos, WhatsApp, fiscal, suporte e seguranca.",
-        "O Sabore devera buscar fornecedores com medidas compativeis de seguranca e confidencialidade. Mudancas relevantes de suboperadores poderao ser comunicadas por atualizacao desta pagina, contrato ou aviso no sistema.",
+        "O Mise devera buscar fornecedores com medidas compativeis de seguranca e confidencialidade. Mudancas relevantes de suboperadores poderao ser comunicadas por atualizacao desta pagina, contrato ou aviso no sistema.",
       ],
     },
     {
       title: "8. Incidentes de seguranca",
       body: [
-        "Ao identificar incidente confirmado que possa envolver dados pessoais tratados pelo Sabore, o Sabore adotara medidas de contencao, investigacao e mitigacao proporcionais.",
-        "Quando o incidente puder acarretar risco ou dano relevante aos titulares sob controle do restaurante, o Sabore comunicara o restaurante para que ele avalie as providencias de comunicacao a ANPD e aos titulares dentro dos prazos legais aplicaveis.",
+        "Ao identificar incidente confirmado que possa envolver dados pessoais tratados pelo Mise, o Mise adotara medidas de contencao, investigacao e mitigacao proporcionais.",
+        "Quando o incidente puder acarretar risco ou dano relevante aos titulares sob controle do restaurante, o Mise comunicara o restaurante para que ele avalie as providencias de comunicacao a ANPD e aos titulares dentro dos prazos legais aplicaveis.",
       ],
     },
     {
@@ -439,19 +439,19 @@ export const dataProcessingAgreement: LegalDocument = {
     {
       title: "10. Auditoria e evidencias",
       body: [
-        "O restaurante podera solicitar informacoes razoaveis sobre medidas de seguranca e tratamento. Auditorias extensas, presenciais ou tecnicas dependerao de acordo previo, confidencialidade, escopo limitado e protecao dos demais clientes do Sabore.",
+        "O restaurante podera solicitar informacoes razoaveis sobre medidas de seguranca e tratamento. Auditorias extensas, presenciais ou tecnicas dependerao de acordo previo, confidencialidade, escopo limitado e protecao dos demais clientes do Mise.",
       ],
     },
     {
       title: "11. Transferencias internacionais",
       body: [
-        "Quando suboperadores processarem dados fora do Brasil, o Sabore buscara medidas contratuais e tecnicas adequadas, observando a LGPD e orientacoes da ANPD quando aplicaveis.",
+        "Quando suboperadores processarem dados fora do Brasil, o Mise buscara medidas contratuais e tecnicas adequadas, observando a LGPD e orientacoes da ANPD quando aplicaveis.",
       ],
     },
     {
       title: "12. Conflito entre documentos",
       body: [
-        "Este Acordo complementa os Termos de Uso e a Politica de Privacidade. Em caso de conflito sobre protecao de dados, este Acordo prevalecera para dados tratados pelo Sabore como operador, salvo disposicao contratual especifica assinada entre as partes.",
+        "Este Acordo complementa os Termos de Uso e a Politica de Privacidade. Em caso de conflito sobre protecao de dados, este Acordo prevalecera para dados tratados pelo Mise como operador, salvo disposicao contratual especifica assinada entre as partes.",
       ],
     },
   ],

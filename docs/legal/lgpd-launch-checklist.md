@@ -1,6 +1,6 @@
-# Sabore LGPD Launch Checklist
+# Mise LGPD Launch Checklist
 
-This checklist tracks what must exist before selling Sabore commercially.
+This checklist tracks what must exist before selling Mise commercially.
 
 ## Legal Documents
 

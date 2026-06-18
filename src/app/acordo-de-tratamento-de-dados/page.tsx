@@ -3,8 +3,8 @@ import { LegalDocumentPage } from "@/components/legal/legal-document-page";
 import { dataProcessingAgreement } from "@/lib/legal-docs";
 
 export const metadata: Metadata = {
-  title: "Acordo de Tratamento de Dados | Sabore",
-  description: "Anexo LGPD para controlador, operador e suboperadores do Sabore.",
+  title: "Acordo de Tratamento de Dados | Mise",
+  description: "Anexo LGPD para controlador, operador e suboperadores do Mise.",
 };
 
 export default function DataProcessingAgreementPage() {

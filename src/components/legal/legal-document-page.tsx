@@ -21,8 +21,10 @@ export function LegalDocumentPage({ document }: { document: LegalDocument }) {
           <Link className="flex items-center gap-3" href="/site">
             <BrandMark />
             <div>
-              <p className="text-sm font-semibold">Sabore</p>
-              <p className="text-xs text-muted-foreground">Documentos legais</p>
+              <p className="text-sm font-semibold">Mise PDV Inteligente</p>
+              <p className="text-xs text-muted-foreground">
+                Operação inteligente para restaurantes
+              </p>
             </div>
           </Link>
           <nav className="flex flex-wrap items-center gap-2 text-sm">

@@ -1,10 +1,10 @@
-import type { SaboreData } from "./types";
+import type { MiseData } from "./types";
 
 const now = "2026-05-03T11:30:00-03:00";
 
-export const demoData: SaboreData = {
+export const demoData: MiseData = {
   organization: {
-    id: "org-sabore",
+    id: "org-mise",
     name: "Pizza e Cia",
     logoUrl: "/logos/pizza-e-cia.svg",
     planCode: "essential",
@@ -13,7 +13,7 @@ export const demoData: SaboreData = {
   },
   unit: {
     id: "unit-ponta-verde",
-    organizationId: "org-sabore",
+    organizationId: "org-mise",
     name: "Pizza e Cia Ponta Verde",
     city: "Maceio",
     neighborhood: "Ponta Verde",

@@ -50,9 +50,9 @@ type LegacySavedDeliveryProfile = Partial<
   }
 >;
 
-export const accountStorageKey = `sabore:${deliveryStore.slug}:delivery-account:v1`;
-const legacyProfileStorageKey = `sabore:${deliveryStore.slug}:delivery-profile:v1`;
-const ordersStorageKey = `sabore:${deliveryStore.slug}:orders:v1`;
+export const accountStorageKey = `Mise:${deliveryStore.slug}:delivery-account:v1`;
+const legacyProfileStorageKey = `Mise:${deliveryStore.slug}:delivery-profile:v1`;
+const ordersStorageKey = `Mise:${deliveryStore.slug}:orders:v1`;
 
 function browserStorage() {
   if (typeof window === "undefined") return null;

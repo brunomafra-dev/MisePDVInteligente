@@ -76,7 +76,7 @@ import {
   nextOrderStatus,
   reserveStockForOrder,
 } from "@/lib/operations";
-import type { SaboreMutation } from "@/lib/sabore-mutations";
+import type { MiseMutation } from "@/lib/mise-mutations";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import type {
   CashSession,
@@ -94,7 +94,7 @@ import type {
   Product,
   RecipeItem,
   Role,
-  SaboreData,
+  MiseData,
   SalesChannel,
   UnitMeasure,
   UserProfile,
@@ -572,14 +572,14 @@ function deductLotsByMovements(
   return nextLots;
 }
 
-export function SaboreApp({
+export function MiseApp({
   initialData,
   accessToken,
   currentUser,
   dataSource,
   onLogout,
 }: {
-  initialData: SaboreData;
+  initialData: MiseData;
   accessToken?: string;
   currentUser?: { name: string; role: Role };
   dataSource?: { source: "supabase" | "demo"; message: string };
@@ -633,7 +633,7 @@ export function SaboreApp({
     ),
   );
   const [activity, setActivity] = useState<string[]>([
-    "Sabore iniciado com Pizza e Cia em Ponta Verde",
+    "Mise iniciado com Pizza e Cia em Ponta Verde",
     "Caixa aberto com R$ 150,00 de fundo",
   ]);
   useEffect(() => {
@@ -664,12 +664,12 @@ export function SaboreApp({
 
     async function refreshOperationalData() {
       try {
-        const response = await fetch("/api/sabore/data", {
+        const response = await fetch("/api/mise/data", {
           cache: "no-store",
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         const result = (await response.json().catch(() => null)) as
-          | { data?: SaboreData }
+          | { data?: MiseData }
           | null;
 
         if (!response.ok || !result?.data || cancelled) return;
@@ -850,7 +850,7 @@ export function SaboreApp({
     setActivity((current) => [message, ...current].slice(0, 6));
   }
 
-  async function persistMutation(mutation: SaboreMutation) {
+  async function persistMutation(mutation: MiseMutation) {
     if (dataSource?.source !== "supabase") return;
 
     if (!accessToken) {
@@ -859,7 +859,7 @@ export function SaboreApp({
     }
 
     try {
-      const response = await fetch("/api/sabore/mutations", {
+      const response = await fetch("/api/mise/mutations", {
         method: "POST",
         keepalive: true,
         headers: {
@@ -1413,7 +1413,7 @@ export function SaboreApp({
     }
 
     if (!accessToken) {
-      log("Login obrigatorio para enviar WhatsApp pelo Sabore");
+      log("Login obrigatorio para enviar WhatsApp pelo Mise");
       return;
     }
 
@@ -1714,7 +1714,7 @@ export function SaboreApp({
 
   return (
     <>
-      <div className="sabore-screen min-h-screen bg-background text-foreground">
+      <div className="mise-screen min-h-screen bg-background text-foreground">
       {deliveryAlert && canReceiveDeliveryAlerts ? (
         <DeliveryNewOrderToast
           alert={deliveryAlert}
@@ -1741,7 +1741,10 @@ export function SaboreApp({
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{organization.name}</p>
               <p className="text-xs text-muted-foreground">
-                Sabore - PDV Inteligente
+                Mise PDV Inteligente
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Operação inteligente para restaurantes
               </p>
               <p className="text-xs font-medium text-primary">{activePlan.name}</p>
             </div>
@@ -1972,7 +1975,7 @@ function NonFiscalReceiptPrint({
   issuedAt,
   order,
 }: {
-  data: SaboreData;
+  data: MiseData;
   issuedAt: string;
   order: Order;
 }) {
@@ -1994,7 +1997,7 @@ function NonFiscalReceiptPrint({
       : "";
 
   return (
-    <section className="sabore-print-root">
+    <section className="mise-print-root">
       <div className="receipt-paper">
         <div className="receipt-center">
           <strong className="receipt-title">{data.organization.name}</strong>
@@ -2123,7 +2126,7 @@ function NonFiscalReceiptPrint({
 
         <div className="receipt-footer">
           <strong>Obrigado pela preferencia.</strong>
-          <span>Sabore - PDV Inteligente</span>
+          <span>Mise PDV Inteligente</span>
         </div>
       </div>
     </section>
@@ -2371,7 +2374,7 @@ function OrderComposer({
   onSubmit,
 }: {
   composer: ComposerState;
-  data: SaboreData;
+  data: MiseData;
   onPatch: (patch: Partial<ComposerState>) => void;
   onChangeItem: (productId: string, delta: number) => void;
   onChangeNote: (productId: string, note: string) => void;
@@ -2547,7 +2550,7 @@ function OrderComposer({
               <div>
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <p className="text-xs font-medium uppercase text-muted-foreground">
-                    Sabores
+                    sabores
                   </p>
                   <Badge variant="neutral">
                     {composer.pizzaBuilder.flavorIds.length}/2 selecionados
@@ -2623,7 +2626,7 @@ function OrderComposer({
                       {pizzaPreview?.name ?? "Escolha pelo menos 1 sabor"}
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Sabores {formatCurrency(pizzaBasePrice)} - adicionais{" "}
+                      sabores {formatCurrency(pizzaBasePrice)} - adicionais{" "}
                       {formatCurrency(pizzaToppingsPrice)}
                     </p>
                   </div>
@@ -2847,7 +2850,7 @@ function ServiceView({
   onFinalize,
 }: {
   orders: Order[];
-  data: SaboreData;
+  data: MiseData;
   onNewCounter: () => void;
   onAddItems: (order: Order) => void;
   onGenerateBill: (orderId: string) => void;
@@ -3077,7 +3080,7 @@ function TablesView({
   onFinalize,
 }: {
   orders: Order[];
-  data: SaboreData;
+  data: MiseData;
   onNewCounter: () => void;
   onOpenTable: (tableId: string) => void;
   onAddItems: (order: Order) => void;
@@ -3260,7 +3263,7 @@ function DeliveryView({
   onSendWhatsApp,
 }: {
   orders: Order[];
-  data: SaboreData;
+  data: MiseData;
   onNewDelivery: () => void;
   onAdvance: (orderId: string) => void;
   onConfirm: (orderId: string) => void;
@@ -3540,7 +3543,7 @@ function KitchenView({
   onAdvance,
 }: {
   orders: Order[];
-  data: SaboreData;
+  data: MiseData;
   onAdvance: (orderId: string) => void;
 }) {
   const columns: OrderStatus[] = ["new", "preparing", "ready"];
@@ -3650,7 +3653,7 @@ function CatalogView({
   onAddRecipeItem,
   onAddTable,
 }: {
-  data: SaboreData;
+  data: MiseData;
   onAddProduct: (form: ProductForm) => void;
   onAddIngredient: (form: IngredientForm) => void;
   onAddRecipeItem: (form: RecipeForm) => void;
@@ -3958,7 +3961,7 @@ function AdminView({
   onUpdateUnitSettings,
 }: {
   currentUser?: { name: string; role: Role };
-  data: SaboreData;
+  data: MiseData;
   onCreateUser: (form: UserForm) => void;
   onUpdateUnitSettings: (form: UnitSettingsForm) => void;
 }) {
@@ -4190,7 +4193,7 @@ function StockView({
 }: {
   positions: ReturnType<typeof calculateStockPositions>;
   lots: InventoryLot[];
-  data: SaboreData;
+  data: MiseData;
   dialog: StockDialog;
   onOpenDialog: (dialog: StockDialog) => void;
   onAdjustStock: (form: StockAdjustmentForm) => boolean;
@@ -4489,7 +4492,7 @@ function ReportsView({
   recipeCosts: ReturnType<typeof calculateRecipeCost>[];
   closing: ReturnType<typeof closeCashSession>;
   movements: InventoryMovement[];
-  data: SaboreData;
+  data: MiseData;
   cmv: number;
 }) {
   const canSeeRealCmv = hasPlanFeature(data.organization.planCode, "realCmv");
@@ -4592,7 +4595,7 @@ function ReportsView({
   );
 }
 
-function IntegrationsView({ data, orders }: { data: SaboreData; orders: Order[] }) {
+function IntegrationsView({ data, orders }: { data: MiseData; orders: Order[] }) {
   const lastOrder = orders[0];
   const totals = lastOrder ? calculateOrderTotals(lastOrder, data.products) : null;
 
@@ -4605,7 +4608,7 @@ function IntegrationsView({ data, orders }: { data: SaboreData; orders: Order[] 
         description="Fiscal nao entra na mensalidade base. Cliente paga ou recebe repasse da API, certificado e contador."
         lines={[
           "Setup fiscal: R$399 a R$699",
-          "Sem mensalidade fiscal Sabore",
+          "Sem mensalidade fiscal Mise",
           "Checklist fiscal antes de producao",
         ]}
       />
@@ -4617,7 +4620,7 @@ function IntegrationsView({ data, orders }: { data: SaboreData; orders: Order[] 
         lines={[
           `Ultimo pedido: ${lastOrder ? `#${lastOrder.code}` : "-"}`,
           `Total exemplo: ${totals ? formatCurrency(totals.total) : "-"}`,
-          "Maquininha segue fora do Sabore no plano base",
+          "Maquininha segue fora do Mise no plano base",
         ]}
       />
       <IntegrationCard

@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "Suporte | Sabore",
+  title: "Suporte | Mise",
   description:
-    "Canais de suporte, limites operacionais e documentos publicos do Sabore.",
+    "Canais de suporte, limites operacionais e documentos publicos do Mise.",
 };
 
 const supportBlocks = [
@@ -44,8 +44,10 @@ export default function SupportPage() {
           <Link className="flex items-center gap-3" href="/site">
             <BrandMark />
             <div>
-              <p className="text-sm font-semibold">Sabore</p>
-              <p className="text-xs text-muted-foreground">Suporte e documentos</p>
+              <p className="text-sm font-semibold">Mise PDV Inteligente</p>
+              <p className="text-xs text-muted-foreground">
+                Operação inteligente para restaurantes
+              </p>
             </div>
           </Link>
           <div className="flex flex-wrap gap-2">
@@ -68,7 +70,7 @@ export default function SupportPage() {
           <p className="mt-5 text-base leading-7 text-muted-foreground">
             Esta pagina concentra os caminhos publicos que o restaurante precisa
             encontrar antes de contratar, durante o piloto e depois que estiver
-            operando no Sabore.
+            operando no Mise.
           </p>
         </div>
 
@@ -116,7 +118,7 @@ export default function SupportPage() {
             <h2 className="text-xl font-semibold tracking-tight">Limites importantes</h2>
             <div className="mt-4 space-y-3 text-sm leading-6 text-muted-foreground">
               <p>
-                O suporte do Sabore cobre uso do sistema e configuracoes do produto.
+                O suporte do Mise cobre uso do sistema e configuracoes do produto.
                 Nao substitui contador, SEFAZ, provedor fiscal, suporte do Mercado Pago,
                 Meta/WhatsApp, internet, rede local, impressora ou manutencao de
                 equipamentos.

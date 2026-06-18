@@ -33,9 +33,9 @@ export class MercadoPagoProvider implements PaymentProvider {
       },
       body: JSON.stringify({
         transaction_amount: input.amount,
-        description: `Pedido Sabore ${input.orderId}`,
+        description: `Pedido Mise ${input.orderId}`,
         payment_method_id: input.method === "pix" ? "pix" : "credit_card",
-        payer: { email: input.customerEmail ?? "cliente@sabore.local" },
+        payer: { email: input.customerEmail ?? "cliente@mise.local" },
         external_reference: input.orderId,
       }),
     });

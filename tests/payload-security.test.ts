@@ -5,7 +5,7 @@ import {
   PayloadError,
 } from "../src/lib/security/request";
 import { sanitizeText } from "../src/lib/security/sanitize";
-import { saboreMutationSchema } from "../src/lib/sabore-mutations";
+import { miseMutationSchema } from "../src/lib/mise-mutations";
 
 test("rejects oversized JSON payloads before parsing", async () => {
   const request = new Request("http://localhost/api/test", {
@@ -51,7 +51,7 @@ test("sanitizes text by trimming whitespace and control characters", () => {
 });
 
 test("sanitizes mutation strings during schema parsing", () => {
-  const parsed = saboreMutationSchema.parse({
+  const parsed = miseMutationSchema.parse({
     type: "create_product",
     product: {
       id: "00000000-0000-4000-8000-000000000001",
@@ -69,7 +69,7 @@ test("sanitizes mutation strings during schema parsing", () => {
 });
 
 test("rejects commercial plan changes from unit settings payloads", () => {
-  const parsed = saboreMutationSchema.safeParse({
+  const parsed = miseMutationSchema.safeParse({
     type: "update_unit_settings",
     organization: {
       id: "00000000-0000-4000-8000-000000000001",
