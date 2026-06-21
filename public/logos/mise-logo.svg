@@ -1,0 +1,13 @@
+<svg width="1040" height="320" viewBox="0 0 1040 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1040" height="320" rx="56" fill="#F8FAF7"/>
+  <g transform="translate(48 48)">
+    <rect width="224" height="224" rx="48" fill="#28634B"/>
+    <path d="M56 139.6h112" stroke="#F8FAF7" stroke-width="16" stroke-linecap="round"/>
+    <path d="M70 139.6c2.1-37.8 24.5-57.4 42-57.4s39.9 19.6 42 57.4" stroke="#F8FAF7" stroke-width="16" stroke-linecap="round"/>
+    <path d="M112 64.5V49" stroke="#D86F3F" stroke-width="16" stroke-linecap="round"/>
+    <path d="M77 171h70" stroke="#F8FAF7" stroke-width="16" stroke-linecap="round"/>
+    <path d="M87.5 107.1c9.8-9.6 20.3-14.2 31.7-12.8" stroke="#D86F3F" stroke-width="11.2" stroke-linecap="round" opacity=".86"/>
+  </g>
+  <text x="320" y="142" fill="#17392C" font-family="Inter, Arial, sans-serif" font-size="76" font-weight="760" letter-spacing="0">Mise</text>
+  <text x="324" y="210" fill="#28634B" font-family="Inter, Arial, sans-serif" font-size="35" font-weight="520" letter-spacing="0">Operação inteligente para restaurantes</text>
+</svg>

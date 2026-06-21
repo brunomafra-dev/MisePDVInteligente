@@ -17,7 +17,17 @@ export const metadata: Metadata = {
   description:
     "Sistema SaaS para PDV, cozinha, estoque, CMV, delivery proprio, recibo nao fiscal e modulos opcionais.",
   icons: {
-    icon: "/icon.svg",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/mise-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/mise-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/icons/mise-apple.png",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Mise",
+    statusBarStyle: "default",
   },
 };
 
