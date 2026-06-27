@@ -1,40 +1,48 @@
+<div align="center">
+
 # Mise PDV Inteligente
 
-Operacao inteligente para restaurantes.
+**SaaS operacional para restaurantes com pedidos, caixa, estoque, ficha técnica, CMV e delivery próprio.**
 
-SaaS/PDV para restaurantes locais, com pedidos, caixa, estoque, ficha tecnica, CMV, validade, recibo nao fiscal e modulos opcionais.
+![Next.js](https://img.shields.io/badge/Next.js-111827?style=for-the-badge&logo=nextdotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-111827?style=for-the-badge&logo=typescript&logoColor=60a5fa)
+![Supabase](https://img.shields.io/badge/Supabase-111827?style=for-the-badge&logo=supabase&logoColor=34d399)
+![Playwright](https://img.shields.io/badge/Playwright-111827?style=for-the-badge&logo=playwright&logoColor=22c55e)
 
-## Por que esse projeto existe
+[Demo](https://misepdvinteligente.vercel.app/) · [Portfólio](https://www.brunomafra.website/pt)
 
-Restaurantes pequenos normalmente precisam operar pedidos, estoque, caixa, delivery e custos com ferramentas separadas ou planilhas. O Mise foi criado como um MVP de operacao comercial para centralizar esse fluxo de forma simples.
+</div>
 
-O projeto conecta experiencia real em cozinha e operacao com desenvolvimento de software: regras de negocio, rotina de equipe, controle de estoque, margem e fluxo de atendimento.
+---
 
-## Funcionalidades
+## Descrição do problema
 
-- Pedidos de balcao, mesa e delivery proprio.
-- Cozinha e fluxo operacional de preparo.
-- Caixa manual e recibo nao fiscal.
-- Gestao de produtos, estoque e validade.
-- Ficha tecnica e calculo de CMV.
-- Site publico de delivery.
-- Paginas publicas de suporte, termos, privacidade, cookies e LGPD.
-- Integracoes mockadas para WhatsApp, Mercado Pago e NFC-e.
-- Testes de dominio para pedidos, estoque, caixa e seguranca de payload.
+Restaurantes pequenos costumam operar pedidos, caixa, estoque, delivery, validade e custo de produtos em ferramentas separadas ou planilhas. Isso cria retrabalho, perda de informação, dificuldade de treinar equipe e pouca visibilidade sobre margem.
 
-## Stack
+O Mise nasce de uma dor operacional real: restaurante precisa vender, produzir, controlar insumos e fechar caixa sem transformar cada rotina em um sistema isolado.
 
-- Next.js App Router
-- React
-- TypeScript
-- Tailwind CSS
-- Supabase
-- Zod
-- Lucide React
-- Playwright
-- TSX test runner
+## Solução proposta
 
-## Arquitetura
+O projeto centraliza a operação de um restaurante em um MVP SaaS/PDV com foco em fluxo real de atendimento:
+
+- pedido de balcão, mesa e delivery;
+- acompanhamento de cozinha;
+- caixa e recibo não fiscal;
+- controle de estoque, validade e ficha técnica;
+- cálculo de CMV e visão de indicadores;
+- site público de delivery e suporte legal básico.
+
+## Stack utilizada
+
+| Camada | Tecnologias |
+| --- | --- |
+| Frontend | Next.js App Router, React, TypeScript, Tailwind CSS |
+| Backend | API Routes, Zod, rate limit e serviços de domínio |
+| Dados | Supabase, schema SQL, seed e autenticação |
+| Integrações | WhatsApp, Mercado Pago e NFC-e em modo provider/mock |
+| Qualidade | ESLint, Playwright e testes de domínio com TSX |
+
+## Arquitetura resumida
 
 ```txt
 src/
@@ -56,51 +64,58 @@ src/
   lib/
     operations.ts
     mise-mutations.ts
-    demo-data.ts
     integrations/
+    security/
 supabase/
   schema.sql
   seed.sql
 tests/
+docs/
 ```
 
-## Rotas
+## Screenshots
 
-- `/`: Mise app and authentication flow.
-- `/site`: public landing page.
-- `/suporte`: public support and contact guidance.
-- `/termos-de-uso`: terms of use draft.
-- `/politica-de-privacidade`: privacy policy draft.
-- `/politica-de-cookies`: cookie policy draft.
-- `/acordo-de-tratamento-de-dados`: LGPD data processing agreement draft.
-- `/app`: legacy redirect to `/`.
+| Tela | O que demonstrar |
+| --- | --- |
+| App operacional | Painel principal com pedidos, caixa e módulos do PDV |
+| Delivery próprio | Cardápio público, carrinho e envio de pedido |
+| Estoque e ficha técnica | Insumos, validade, consumo e cálculo de CMV |
+| Site público | Landing page comercial e páginas legais |
 
-## Modelo comercial simulado
+Imagem de preview disponível no projeto: [`public/mise-preview.png`](public/mise-preview.png).
 
-- Essencial: R$59,90/mes.
-- Operacao: R$89,90/mes.
-- Site Delivery Proprio: R$300 setup + R$39,90/mes.
-- Fiscal NFC-e: setup separado, com custos de API/certificado/contabilidade.
-- iFood/99Food: modulos assistidos conforme disponibilidade de API/parceiros.
-- WhatsApp Status e Agente IA WhatsApp como modulos opcionais.
+## Funcionalidades
 
-## Env Vars
+- Pedidos de balcão, mesa e delivery próprio.
+- Fluxo operacional de cozinha.
+- Caixa manual e recibo não fiscal.
+- Gestão de produtos, estoque, validade e lotes.
+- Ficha técnica e cálculo de CMV.
+- Site público de delivery.
+- Autenticação com Supabase.
+- Controle de planos e módulos opcionais.
+- Páginas públicas de suporte, termos, privacidade, cookies e LGPD.
+- Providers preparados para WhatsApp, Mercado Pago e NFC-e.
+- Testes de domínio para pedidos, estoque, caixa e segurança de payload.
 
-Copie `.env.example` para `.env.local` e preencha apenas o que for usar:
+## Roadmap
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `FOCUS_NFE_TOKEN`
-- `FOCUS_NFE_BASE_URL`
-- `MERCADO_PAGO_ACCESS_TOKEN`
-- `MERCADO_PAGO_BASE_URL`
-- `WHATSAPP_ACCESS_TOKEN`
-- `WHATSAPP_PHONE_NUMBER_ID`
-- `WHATSAPP_GRAPH_BASE_URL`
-- `WHATSAPP_GRAPH_VERSION`
+- Adicionar screenshots reais da operação em `docs/screenshots/`.
+- Evoluir autenticação multiempresa e papéis por unidade.
+- Trocar mocks por integrações reais conforme credenciais/API.
+- Refinar dashboard de margem, estoque, vendas e alertas.
+- Ampliar testes de fluxo operacional ponta a ponta.
+- Consolidar domínio definitivo da marca Mise.
 
-## Rodando localmente
+## Aprendizados
+
+- Sistemas operacionais precisam começar por regras de negócio, não por tela.
+- Estoque, caixa e pedido exigem consistência transacional e validação forte.
+- Experiência real em cozinha ajuda a prever casos que CRUDs simples não cobrem.
+- Mesmo um MVP precisa comunicar limites de fiscal, pagamento e integrações externas.
+- Produto B2B ganha valor quando traduz rotina operacional em fluxo simples.
+
+## Como executar
 
 ```bash
 npm install
@@ -109,49 +124,35 @@ npm run dev
 
 Abra `http://localhost:3000`.
 
-## Supabase
+Copie `.env.example` para `.env.local` e preencha apenas o que for usar:
 
-Para usar o modelo inicial de dados:
-
-```bash
-supabase db reset
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+FOCUS_NFE_TOKEN=
+FOCUS_NFE_BASE_URL=
+MERCADO_PAGO_ACCESS_TOKEN=
+MERCADO_PAGO_BASE_URL=
+WHATSAPP_ACCESS_TOKEN=
+WHATSAPP_PHONE_NUMBER_ID=
+WHATSAPP_GRAPH_BASE_URL=
+WHATSAPP_GRAPH_VERSION=
 ```
 
-Ou execute manualmente:
+Scripts úteis:
 
 ```bash
-supabase/schema.sql
-supabase/seed.sql
-```
-
-## Scripts
-
-```bash
-npm run dev
 npm run build
 npm run lint
 npm run test
 npm run test:browser
 ```
 
-## Aprendizados
+## Link para Demo
 
-- Sistemas de operacao exigem regras de negocio claras antes da interface.
-- Estoque, pedidos e caixa precisam de consistencia, validacao e testes.
-- Experiencia real em operacao ajuda a pensar casos que nao aparecem em CRUD simples.
-- Mesmo um MVP precisa comunicar limites: fiscal, pagamentos e integracoes externas.
+https://misepdvinteligente.vercel.app/
 
-## Proximos passos
+## Link para Portfólio
 
-- Configurar dominio definitivo da marca Mise.
-- Melhorar README com prints reais da demo.
-- Evoluir autenticacao e multiempresa.
-- Trocar mocks por integracoes reais conforme credenciais/API.
-- Criar mais testes de fluxo operacional.
-- Refinar dashboard de indicadores para margem, estoque e vendas.
-
-## Documentacao
-
-- [`docs/architecture.md`](docs/architecture.md)
-- [`docs/product-plan-alignment.md`](docs/product-plan-alignment.md)
-- [`docs/legal/lgpd-launch-checklist.md`](docs/legal/lgpd-launch-checklist.md)
+https://www.brunomafra.website/pt
